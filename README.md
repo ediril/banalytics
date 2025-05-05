@@ -1,4 +1,4 @@
-# analytics.php 
+# banalytics.php 
 Include this on pages you want to track
 
 # ip2geo.php
@@ -10,8 +10,8 @@ php _code_/ip2geo.php /path/to/analytics.db
 # visualize.php
 Visualize traffic
 ```
+cd banalytics
 php -S localhost:8000
-php -S localhost:8000 -t /path/to/serve
 ```
 
 # Prepare geolite2 database
