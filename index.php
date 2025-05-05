@@ -15,6 +15,7 @@ $countriesCount = 0;
 $topCountries = [];
 $recentVisitors = [];
 $error_message = null;
+$ipsNeedingGeocodingCount = 0;
 
 // Define available time windows and their labels
 $timeWindows = [
@@ -49,6 +50,16 @@ if (!file_exists($db_path)) {
 
 try {
     $db = new SQLite3($db_path);
+    
+    // Check if there are IPs that need geocoding
+    $ipsNeedingGeocodingCount = $db->querySingle("
+        SELECT COUNT(DISTINCT ip) 
+        FROM analytics 
+        WHERE latitude IS NULL
+        AND ip != 'localhost'
+        AND ip != '127.0.0.1'
+        AND ip != '::1'
+    ");
     
     try {
         // Prepare time filter condition
@@ -247,6 +258,14 @@ try {
                 <?php endforeach; ?>
             </div>
         </div>
+
+        <?php if ($ipsNeedingGeocodingCount > 0): ?>
+        <div class="notification is-warning has-text-centered">
+            <p><strong>Warning:</strong> There are <?php echo $ipsNeedingGeocodingCount; ?> IP address(es) that need geocoding. 
+            Some visitors may not appear on the map.</p>
+            <p>Run <code>php ip2geo.php</code> to add geolocation data to these IPs.</p>
+        </div>
+        <?php endif; ?>
 
         <div class="stats-container">
             <div class="stat-box">
