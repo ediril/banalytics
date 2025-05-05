@@ -2,6 +2,12 @@
 function record_visit(?callable $url_filter = null, $ip_list_to_skip = array()) { 
     // TODO: Implement ip_list_to_skip
 
+    $db_path = __DIR__ . '/banalytics.db';
+    if (!file_exists($db_path)) {
+        error_log("DB file not found: $db_path");
+        return;
+    }
+
     $url = $_SERVER['REQUEST_URI'];
 
     if ($url_filter !== null) {
@@ -26,16 +32,10 @@ function record_visit(?callable $url_filter = null, $ip_list_to_skip = array()) 
     // $key = 123321, $maxAcquire = 1, $permissions =0666, $autoRelease = 1
     $semaphore = sem_get(123321, 1, 0666, 1);
     sem_acquire($semaphore);  //blocking
-    
-    $db_path = __DIR__ . '/banalytics.db';
-    if (!file_exists($db_path)) {
-        print("DB file not found: $db_path\n");
-        return;
-    }
 
     $db = new SQLite3($db_path);
     if ($db === FALSE) {
-        print("Error opening database: " . $db->lastErrorMsg());
+        error_log("Error opening database: " . $db->lastErrorMsg());
         return;
     }
 
@@ -47,7 +47,7 @@ function record_visit(?callable $url_filter = null, $ip_list_to_skip = array()) 
     ');
        
     if ($stmt === FALSE) {
-        print("Error preparing statement: " . $db->lastErrorMsg());
+        error_log("Error preparing statement: " . $db->lastErrorMsg());
         return;
     }
 
@@ -72,7 +72,7 @@ function record_visit(?callable $url_filter = null, $ip_list_to_skip = array()) 
 function create_db() {
     $db_path = __DIR__ . '/banalytics.db';
     if (file_exists($db_path)) {
-        print("Database already exists: $db_path\n");
+        error_log("Database already exists: $db_path");
         return;
     }
     
