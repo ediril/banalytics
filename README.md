@@ -1,14 +1,14 @@
 # banalytics.php 
-Include this on pages you want to track
+Include this on pages you want to track and call `record_visit()`
 
 # ip2geo.php
-Fill in city, country, longitude, latitude using IP address
+Fills in city, country, longitude, latitude using IP address
 ```
-php _code_/ip2geo.php /path/to/analytics.db
+php _code_/ip2geo.php [/path/to/analytics.db]
 ```
 
-# visualize.php
-Visualize traffic
+# index.php
+Visualizes traffic when run on localhost
 ```
 cd banalytics
 php -S localhost:8000
