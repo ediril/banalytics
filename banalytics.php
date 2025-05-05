@@ -68,7 +68,7 @@ function record_visit(?callable $url_filter = null, $ip_list_to_skip = array()) 
     sem_release($semaphore);
 }
 
-// php -r "require 'analytics.php'; create_db();"
+// php -r "require 'banalytics.php'; create_db();"
 function create_db() {
     $db_path = __DIR__ . '/banalytics.db';
     if (file_exists($db_path)) {
