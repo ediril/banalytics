@@ -3,6 +3,12 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+if (array_key_exists('HTTP_HOST', $_SERVER)) {
+    http_response_code(404);
+    echo "<!DOCTYPE html><html><head><title>404 Not Found</title></head><body>404 Not Found</body></html>";
+    exit;
+}
+
 // Path to databases
 $geo_db_path = __DIR__ . '/../GeoLite2-City-CSV_20250422/geolite2_20250422.db';
 
