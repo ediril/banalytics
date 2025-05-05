@@ -27,7 +27,7 @@ function record_visit(?callable $url_filter = null, $ip_list_to_skip = array()) 
     $semaphore = sem_get(123321, 1, 0666, 1);
     sem_acquire($semaphore);  //blocking
     
-    $db_path = __DIR__ . '/analytics.db';
+    $db_path = __DIR__ . '/banalytics.db';
     if (!file_exists($db_path)) {
         print("DB file not found: $db_path\n");
         return;
@@ -70,7 +70,7 @@ function record_visit(?callable $url_filter = null, $ip_list_to_skip = array()) 
 
 // php -r "require 'analytics.php'; create_db();"
 function create_db() {
-    $db_path = __DIR__ . '/analytics.db';
+    $db_path = __DIR__ . '/banalytics.db';
     if (file_exists($db_path)) {
         print("Database already exists: $db_path\n");
         return;
