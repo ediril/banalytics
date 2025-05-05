@@ -21,7 +21,7 @@ function record_visit(?callable $url_filter = null, $ip_list_to_skip = array()) 
     $referer = $_SERVER['HTTP_REFERER'] ?? "";
     $ua = $_SERVER['HTTP_USER_AGENT'] ?? "";
     $now = DateTime::createFromFormat('U.u', microtime(true));
-    $dt = time(); //$now->format("Y-m-d H:i:s.u");
+    $dt = time(); // unix timestamp in seconds
     $status = http_response_code();
     
     // anonymize ip address by dropping last octet

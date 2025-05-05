@@ -1,28 +1,10 @@
-/*
-    Write a php script to read database file with the schema below and populate `latitude` and `longitude` 
-    columns based on ip address in `ip` column, using the geolite2 database file at 
-    GeoLite2-City-CSV_20250422/geolite2_20250422.db which has "blocks" and "locations" tables.
-
-    CREATE TABLE IF NOT EXISTS "analytics" (
-        ip TEXT NOT NULL DEFAULT "",
-        dt INTEGER NOT NULL,  -- Unix timestamp (seconds since epoch)
-        url TEXT NOT NULL,
-        referer TEXT DEFAULT "",
-        ua TEXT DEFAULT "",
-        status INT DEFAULT NULL,
-        country TEXT DEFAULT NULL,
-        city TEXT DEFAULT NULL,
-        latitude REAL DEFAULT NULL,
-        longitude REAL DEFAULT NULL,
-        PRIMARY KEY(ip, dt, url)
-    );
-
-*/
-
 <?php
 // Set error reporting to show all errors
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
+
+// Path to databases
+$geo_db_path = __DIR__ . '/../GeoLite2-City-CSV_20250422/geolite2_20250422.db';
 
 // Function to convert IP to integer
 function ip2long_v4($ip) {
@@ -40,9 +22,8 @@ function ip_in_range($ip, $cidr) {
     return ($ip_decimal & $mask_decimal) == ($subnet_decimal & $mask_decimal);
 }
 
-// Path to databases
-$geo_db_path = __DIR__ . '/../GeoLite2-City-CSV_20250422/geolite2_20250422.db';
-$analytics_db_path = __DIR__ . '/../_db_/ed_analytics.db'; // Default path, can be changed in the arguments
+// Default path, can be changed in the arguments
+$analytics_db_path = __DIR__ . '/banalytics.db'; 
 
 // Check if an alternative analytics DB path was provided
 if ($argc > 1) {
@@ -121,8 +102,6 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
         $skipped_count++;
         continue;
     }
-    
-    echo "Processing IP: $ip\n";
     
     // Extract the first two octets of the IP address to reduce the search space
     $ip_parts = explode('.', $ip);
