@@ -243,7 +243,7 @@ try {
 <body>
     <div class="container my-5">
         <div class="content has-text-centered">
-            <h1>BANALYTICS</h1>
+            <h1>BANALYTIQ</h1>
             <h3>Database file: <?php echo htmlspecialchars(basename($db_path)); ?></h3>
         </div>
 
