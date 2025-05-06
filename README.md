@@ -26,7 +26,7 @@
 # Prepare geolite database
 Download and extract GeoLite2-City-CSV_{YYYYMMDD}.zip from [MaxMind](https://dev.maxmind.com)
 ```
-> sqlite3 geolite2_{YYYYMMDD}.db
+> sqlite3 geolite2.db
 .mode csv
 .import GeoLite2-City-Blocks-IPv4.csv blocks
 .import GeoLite2-City-Locations-en.csv locations
