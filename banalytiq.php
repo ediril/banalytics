@@ -2,10 +2,10 @@
 
 require_once 'defines.php';
 
-function record_visit(?callable $url_filter = null, $ip_list_to_skip = array()) { 
+function record_visit($db_name = null, ?callable $url_filter = null, $ip_list_to_skip = array()) { 
     // TODO: Implement ip_list_to_skip
 
-    $db_path = __DIR__ . '/' . BANALYTIQ_DB;
+    $db_path = __DIR__ . '/' . ($db_name !== null ? $db_name : BANALYTIQ_DB);
     if (!file_exists($db_path)) {
         error_log("DB file not found: $db_path");
         return;
@@ -71,9 +71,9 @@ function record_visit(?callable $url_filter = null, $ip_list_to_skip = array()) 
     sem_release($semaphore);
 }
 
-// php -r "require 'banalytics.php'; create_db();"
-function create_db() {
-    $db_path = __DIR__ . '/banalytics.db';
+function create_db($db_name = null) {
+    $db_path = __DIR__ . '/' . ($db_name !== null ? $db_name : BANALYTIQ_DB);
+    
     if (file_exists($db_path)) {
         error_log("Database already exists: $db_path");
         return;

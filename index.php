@@ -1,4 +1,6 @@
 <?php
+// This script visualizes website visitor data on a map using Leaflet.js and SQLite3.
+// Run it from a web server (see README.md for instructions).
 
 require_once 'defines.php';
 
@@ -33,16 +35,10 @@ $timeWindows = [
 $timeWindow = isset($_GET['time']) && array_key_exists($_GET['time'], $timeWindows) ? $_GET['time'] : '1M';
 $timeFilter = $timeWindows[$timeWindow];
 
-$db_path = __DIR__ . '/' . BANALYTIQ_DB;
-
 $custom_name = isset($_GET['db']) ? $_GET['db'] : '';
-if (!empty($custom_name)) {
-    $db_path = __DIR__ . '/' . $custom_name;
-    
-    # if custom_name does not end with .db, append .db
-    if (substr($db_path, -3) !== '.db') {
-        $db_path .= '.db';
-    }
+$db_path = __DIR__ . '/' . (!empty($custom_name) ? $custom_name : BANALYTIQ_DB);
+if (substr($db_path, -3) !== '.db') {
+    $db_path .= '.db';
 }
 
 if (!file_exists($db_path)) {
@@ -60,7 +56,7 @@ try {
         WHERE latitude IS NULL
         AND ip != 'localhost'
         AND ip != '127.0.0.1'
-        AND ip != '::1'
+        AND ip != '::1.0'
     ");
     
     try {
@@ -86,6 +82,7 @@ try {
         }
 
         // Get total visitor stats with time filter
+        // TODO: Exclude localhost IPs from the count
         $totalVisits = $db->querySingle("SELECT COUNT(*) FROM analytics WHERE 1=1 $whereTimeClause");
         $uniqueVisitors = $db->querySingle("SELECT COUNT(DISTINCT ip) FROM analytics WHERE 1=1 $whereTimeClause");
         $countriesCount = $db->querySingle("SELECT COUNT(DISTINCT country) FROM analytics WHERE country IS NOT NULL $whereTimeClause");
