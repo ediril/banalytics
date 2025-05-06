@@ -1,4 +1,7 @@
 <?php
+
+require_once 'defines.php';
+
 // Set error reporting to show all errors
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -10,7 +13,7 @@ if (array_key_exists('HTTP_HOST', $_SERVER)) {
 }
 
 // Path to databases
-$geo_db_path = __DIR__ . '/../GeoLite2-City-CSV_20250422/geolite2_20250422.db';
+$geo_db_path = __DIR__ . '/' . GEO_DB;
 
 // Function to convert IP to integer
 function ip2long_v4($ip) {
@@ -29,7 +32,7 @@ function ip_in_range($ip, $cidr) {
 }
 
 // Default path, can be changed in the arguments
-$analytics_db_path = __DIR__ . '/banalytics.db'; 
+$analytics_db_path = __DIR__ . '/' . BANALYTIQ_DB; 
 
 // Check if an alternative analytics DB path was provided
 if ($argc > 1) {

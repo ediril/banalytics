@@ -1,5 +1,7 @@
 <?php
 
+require_once 'defines.php';
+
 if (!str_starts_with($_SERVER['HTTP_HOST'], 'localhost') && !str_starts_with($_SERVER['HTTP_HOST'], '127.0.0.1')) {
     http_response_code(404);
     echo "<!DOCTYPE html><html><head><title>404 Not Found</title></head><body>404 Not Found</body></html>";
@@ -31,7 +33,7 @@ $timeWindows = [
 $timeWindow = isset($_GET['time']) && array_key_exists($_GET['time'], $timeWindows) ? $_GET['time'] : '1M';
 $timeFilter = $timeWindows[$timeWindow];
 
-$db_path = __DIR__ . '/banalytics.db';
+$db_path = __DIR__ . '/' . BANALYTIQ_DB;
 
 $custom_name = isset($_GET['db']) ? $_GET['db'] : '';
 if (!empty($custom_name)) {
