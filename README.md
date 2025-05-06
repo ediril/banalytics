@@ -1,4 +1,4 @@
-# banalytics.php 
+# banalytiq.php 
 Include this on pages you want to track and call `record_visit()`
 
 # ip2geo.php
@@ -10,7 +10,7 @@ php ip2geo.php [/path/to/banalytiq.db]
 # index.php
 Visualizes traffic when run on localhost
 ```
-cd banalytics
+cd banalytiq
 php -S localhost:8000
 ```
 
