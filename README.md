@@ -4,7 +4,7 @@ Include this on pages you want to track and call `record_visit()`
 # ip2geo.php
 Fills in city, country, longitude, latitude using IP address
 ```
-php _code_/ip2geo.php [/path/to/analytics.db]
+php ip2geo.php [/path/to/banalytiq.db]
 ```
 
 # index.php
