@@ -2,7 +2,7 @@
 function record_visit(?callable $url_filter = null, $ip_list_to_skip = array()) { 
     // TODO: Implement ip_list_to_skip
 
-    $db_path = __DIR__ . '/banalytics.db';
+    $db_path = __DIR__ . '/banalytiq.db';
     if (!file_exists($db_path)) {
         error_log("DB file not found: $db_path");
         return;
