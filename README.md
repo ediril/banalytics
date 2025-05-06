@@ -1,23 +1,32 @@
-# banalytiq.php 
-Include this on pages you want to track and call `record_visit()`
-
-# ip2geo.php
-Fills in city, country, longitude, latitude using IP address
+# How to use
+1. Create a blank database
 ```
-php ip2geo.php [/path/to/banalytiq.db]
+> php -r "require 'banalytiq.php'; create_db();"
 ```
 
-# index.php
-Visualizes traffic when run on localhost
-```
-cd banalytiq
-php -S localhost:8000
+2. Include banalytiq.php 
+```php
+<?php
+    require_once 'banalytiq.php'
+    record_visit();
+?>
 ```
 
-# Prepare geolite2 database
+3. Download the database file and fill in city, country, longitude, latitude using collected IP addresses
+```
+> php -r "require 'geo.php'; ip2geo();"
+```
+
+4. Visualize web traffic on localhost
+```
+> cd banalytiq
+> php -S localhost:8000
+```
+
+# Prepare geolite database
 Download and extract GeoLite2-City-CSV_{YYYYMMDD}.zip from [MaxMind](https://dev.maxmind.com)
 ```
-sqlite3 geolite2_{YYYYMMDD}.db
+> sqlite3 geolite2_{YYYYMMDD}.db
 .mode csv
 .import GeoLite2-City-Blocks-IPv4.csv blocks
 .import GeoLite2-City-Locations-en.csv locations
