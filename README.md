@@ -1,3 +1,5 @@
+![Screenshot](screenshot.jpg)
+
 # How to use
 1. Create a blank database
 ```
