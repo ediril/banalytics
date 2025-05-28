@@ -1,31 +1,40 @@
 ![Screenshot](screenshot.jpg)
 
 # How to use
-1. Create a blank database
+First, add it as a submodule to your project:
 ```
-> php -r "require 'banalytiq.php'; create_db();"
+$ git submodule add https://github.com/ediril/banalytiq.git
 ```
 
-2. Include banalytiq.php 
+Then do following in the banalytiq folder:
+```
+$ cd banalytiq
+```
+
+## Create a blank database
+```
+$ php -r "require 'banalytiq.php'; create_db();"
+```
+
+## Include banalytiq.php 
 ```php
 <?php
-    require_once 'banalytiq.php'
+    require_once __DIR__ . '/banalytiq/banalytiq.php';
     record_visit();
 ?>
 ```
 
-3. Download the database file and fill in city, country, longitude, latitude using collected IP addresses
+## Download the database file and fill in city, country, longitude, latitude for the collected IP addresses 
 ```
-> php -r "require 'geo.php'; ip2geo();"
-```
-
-4. Visualize web traffic on localhost
-```
-> cd banalytiq
-> php -S localhost:8000
+$ php -r "require 'geo.php'; download(); ip2geo();"
 ```
 
-# Prepare geolite database
+## Now you can visualize web traffic
+```
+$ php -S localhost:8000
+```
+
+# How to prepare geolite database
 Download and extract GeoLite2-City-CSV_{YYYYMMDD}.zip from [MaxMind](https://dev.maxmind.com)
 ```
 > sqlite3 geolite2.db
