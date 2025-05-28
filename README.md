@@ -1,22 +1,18 @@
 ![Screenshot](screenshot.jpg)
 
 # How to use
-First, add it as a submodule to your project:
+## Add it to your git project as a submodule:
 ```
 $ git submodule add https://github.com/ediril/banalytiq.git
 ```
 
-Then do following in the banalytiq folder:
-```
-$ cd banalytiq
-```
-
 ## Create a blank database
 ```
+$ cd banalytiq
 $ php -r "require 'banalytiq.php'; create_db();"
 ```
 
-## Include banalytiq.php 
+## Include banalytiq.php in your application's `index.php`
 ```php
 <?php
     require_once __DIR__ . '/banalytiq/banalytiq.php';
@@ -24,12 +20,18 @@ $ php -r "require 'banalytiq.php'; create_db();"
 ?>
 ```
 
+## Push `/banalytiq` folder and the modified `index.php` to your webserver
+```
+TODO
+```
+
 ## Download the database file and fill in city, country, longitude, latitude for the collected IP addresses 
 ```
+$ cd banalytiq
 $ php -r "require 'geo.php'; download(); ip2geo();"
 ```
 
-## Now you can visualize web traffic
+## Visualize your web traffic
 ```
 $ php -S localhost:8000
 ```
