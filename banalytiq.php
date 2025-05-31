@@ -17,10 +17,6 @@ function record_visit($db_name = null, ?callable $url_filter = null, $ip_list_to
         // TODO: Implement url whitelist
     }
 
-    if (strpos($url, "/summary/") !== 0 && $url != "/" && strpos($url, '/?') !== 0) {
-        return;
-    }
-
     $referer = $_SERVER['HTTP_REFERER'] ?? "";
     $ua = $_SERVER['HTTP_USER_AGENT'] ?? "";
     $now = DateTime::createFromFormat('U.u', microtime(true));
@@ -44,7 +40,7 @@ function record_visit($db_name = null, ?callable $url_filter = null, $ip_list_to
 
     // Store data in database (without location data)
     $stmt = $db->prepare('
-        INSERT INTO "analytics"
+        INSERT OR IGNORE INTO "analytics"
         (ip, dt, url, referer, ua, status) 
         VALUES (:ip, :dt, :url, :referer, :ua, :status)
     ');
