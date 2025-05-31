@@ -1,8 +1,11 @@
 .idea/
 __pycache__/
+_**_/
 .mypy_cache/
 wbclib/
 venv/
+GeoLite2**/
 
 *.DS_Store
 *.db
+___**
