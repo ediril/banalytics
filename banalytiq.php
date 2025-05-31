@@ -13,6 +13,16 @@ function record_visit($db_name = null, ?callable $url_filter = null, $ip_list_to
 
     $url = $_SERVER['REQUEST_URI'];
 
+    // Extract the path without query parameters  
+    $url_path = parse_url($url, PHP_URL_PATH);
+
+    // Only track requests without file extensions (modern clean URLs)
+    // This excludes images, CSS, JS, fonts, and other static assets automatically
+    $path_info = pathinfo($url_path);
+    if (isset($path_info['extension'])) {
+        return;
+    }
+
     if ($url_filter !== null) {
         // TODO: Implement url whitelist
     }
