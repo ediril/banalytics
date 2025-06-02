@@ -1,6 +1,6 @@
 <?php
 
-require_once 'defines.php';
+require_once __DIR__ . '/defines.php';
 
 function record_visit($db_name = null, ?callable $url_filter = null, $ip_list_to_skip = array()) { 
     // TODO: Implement ip_list_to_skip

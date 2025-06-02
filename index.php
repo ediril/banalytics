@@ -2,7 +2,7 @@
 // This script visualizes website visitor data on a map using Leaflet.js and SQLite3.
 // Run it from a web server (see README.md for instructions).
 
-require_once 'defines.php';
+require_once __DIR__ . '/defines.php';
 
 if (!str_starts_with($_SERVER['HTTP_HOST'], 'localhost') && !str_starts_with($_SERVER['HTTP_HOST'], '127.0.0.1')) {
     http_response_code(404);

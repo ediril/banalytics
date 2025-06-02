@@ -8,7 +8,7 @@ if (array_key_exists('HTTP_HOST', $_SERVER)) {
     exit;
 }
 
-require_once 'defines.php';
+require_once __DIR__ . '/defines.php';
 
 function ip2geo($db_name = null) { 
     // Set error reporting to show all errors
