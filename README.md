@@ -21,9 +21,7 @@ $ php -r "require 'banalytiq.php'; create_db();"
 ```
 
 ## Push `/banalytiq` folder and the modified `index.php` to your webserver
-```
-TODO
-```
+TODO: We'll eventually have a way to do this via terminal
 
 ## Download the database file and fill in city, country, longitude, latitude for the collected IP addresses 
 ```
@@ -34,6 +32,11 @@ $ php -r "require 'geo.php'; download(); ip2geo();"
 ## Visualize your web traffic
 ```
 $ php -S localhost:8000
+```
+
+# How to apply updates to the submodule
+```
+$ git submodule update --remote
 ```
 
 # How to prepare geolite database
