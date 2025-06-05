@@ -1,6 +1,3 @@
-## General Guidelines
-- Do not summarize, explain your changes or their benefits.
-
 ## Lint/Test Commands
 - Lint Python code: `flake8 . --max-line-length=150`
 - Type check: `mypy --ignore-missing-imports .`
