@@ -1,15 +1,40 @@
-- Implement download() method to fetch the database from the webserver
-    - Look for yaml config file for ftp creds
+# Primary
+- Add support for exporting db
+
+- Fill in geo data on the web server
 
 - Update the geo data in bulk, not one at a time
 
-- Use github as CMS for website: 
-    https://www.perplexity.ai/search/how-to-setup-github-repo-as-cm-geeRYRY7StGAn2MWCya9GQ
+- Visualization behind password
+
+- Warn when db file is above a certain size
+
+
+# Secondary
+
+- Track data entered to input/search boxes 
+
+- Track clicked links (internal & external)
 
 - How can i see who referred a user to my site's page using PHP: https://www.perplexity.ai/search/how-can-i-see-who-referred-a-u-omJx7fnuRhuiLD6shEfYCQ
 
 - Show visitors per page to top X pages
 
+- Implement download() method to fetch the database from the webserver
+    - Look for yaml config file for ftp creds
+
+
+# Future
+
+- SaaS products that automate website optimization (speed, SEO, image compression, etc.) are rapidly growing. NitroPack, for instance, automates website speed optimization and has over 246,000 customers, showing that niche automation tools can scale quickly to $1 million ARR and beyond
+
+- Trend analysis tool
+An app that helps business owners spot emerging trends by tracking data over time. They can track changes in sales, website traffic, customer behavior, and other key metrics to identify patterns and forecast future growth.
+
+- search rankings, performing keyword research, and spotting trends in an industry will be a fantastic idea.
+
+- Heatmap analysis tool
+Heatmaps are a great way to visualize how visitors interact with websites, apps, or landing pages. This tool would generate heatmaps that show where users are clicking, scrolling, or spending the most time on a page, optimizing your call-to-action placement.
 
 
 # MISC
