@@ -4,6 +4,7 @@ _**_/
 .mypy_cache/
 wbclib/
 venv/
+vendor/
 GeoLite2**/
 
 *.DS_Store

@@ -21,12 +21,15 @@ $ php -r "require 'banalytiq.php'; create_db();"
 ```
 
 ## Push `/banalytiq` folder and the modified `index.php` to your webserver
-TODO: We'll eventually have a way to do this via terminal
+TODO: We'll eventually have a way to do this via terminal.
+
+NOTE: You do NOT need to deploy `vendor/` folder, that's only needed for development so the editor
+can find the needed function definitions.
 
 ## Download the database file and fill in city, country, longitude, latitude for the collected IP addresses 
 ```
 $ cd banalytiq
-$ php -r "require 'geo.php'; download(); ip2geo();"
+$ php -r "require download.php; download(); require 'geo.php'; ip2geo();"
 ```
 
 ## Visualize your web traffic
