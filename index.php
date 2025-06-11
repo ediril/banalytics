@@ -1,6 +1,6 @@
 <?php
 // This script visualizes website visitor data on a map using Leaflet.js and SQLite3.
-// Run it from a web server (see README.md for instructions).
+// It will only work on localhost or 127.0.0.1.
 
 require_once __DIR__ . '/defines.php';
 
