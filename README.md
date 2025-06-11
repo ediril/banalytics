@@ -32,6 +32,8 @@ $ cd banalytiq
 $ php -r "require download.php; download(); require 'geo.php'; ip2geo();"
 ```
 
+Note: `download()` method only works with FTP over TLS. It requires PHP to be compiled with OpenSSL support, and it only works with explicit FTPS.
+
 ## Visualize your web traffic
 ```
 $ php -S localhost:8000

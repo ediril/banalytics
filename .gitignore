@@ -9,4 +9,6 @@ GeoLite2**/
 
 *.DS_Store
 *.db
-___**
+*.bak
+*.yaml
+
