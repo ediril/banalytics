@@ -42,9 +42,10 @@ function record_visit($db_name = null, ?callable $url_filter = null, $ip_list_to
     $semaphore = sem_get(123321, 1, 0666, 1);
     sem_acquire($semaphore);  //blocking
 
-    $db = new SQLite3($db_path);
-    if ($db === FALSE) {
-        error_log("Error opening database: " . $db->lastErrorMsg());
+    try {
+        $db = new SQLite3($db_path);
+    } catch (Exception $e) {
+        error_log("Error opening database: " . $e->getMessage());
         return;
     }
 
