@@ -24,11 +24,11 @@ $ipsNeedingGeocodingCount = 0;
 
 // Define available time windows and their labels
 $timeWindows = [
-    '1D' => 86400,        // 1 day in seconds
-    '1W' => 604800,       // 1 week in seconds
-    '1M' => 2592000,      // 1 month in seconds (30 days)
-    '3M' => 7776000,      // 3 months in seconds (90 days)
-    '6M' => 15552000,     // 6 months in seconds (180 days)
+    '1D' => 60 * 60 * 24,        // 1 day in seconds
+    '1W' => 60 * 60 * 24 * 7,       // 1 week in seconds
+    '1M' => 60 * 60 * 24 * 30,      // 1 month in seconds (30 days)
+    '3M' => 60 * 60 * 24 * 90,      // 3 months in seconds (90 days)
+    '6M' => 60 * 60 * 24 * 180,     // 6 months in seconds (180 days)
     'ALL' => 0            // 0 means no filter
 ];
 
@@ -73,7 +73,7 @@ try {
         $result = $db->query("
             SELECT country, city, latitude, longitude, COUNT(*) as visit_count 
             FROM analytics 
-            WHERE latitude IS NOT NULL AND longitude IS NOT NULL $whereTimeClause
+            WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND status BETWEEN 200 AND 299 $whereTimeClause
             GROUP BY country, city, latitude, longitude
             ORDER BY visit_count DESC
         ");
@@ -83,10 +83,9 @@ try {
         }
 
         // Get total visitor stats with time filter
-        // TODO: Exclude localhost IPs from the count
-        $totalVisits = $db->querySingle("SELECT COUNT(*) FROM analytics WHERE 1=1 $whereTimeClause");
-        $uniqueVisitors = $db->querySingle("SELECT COUNT(DISTINCT ip) FROM analytics WHERE 1=1 $whereTimeClause");
-        $countriesCount = $db->querySingle("SELECT COUNT(DISTINCT country) FROM analytics WHERE country IS NOT NULL $whereTimeClause");
+        $totalVisits = $db->querySingle("SELECT COUNT(*) FROM analytics WHERE status BETWEEN 200 AND 299 $whereTimeClause");
+        $uniqueVisitors = $db->querySingle("SELECT COUNT(DISTINCT ip) FROM analytics WHERE status BETWEEN 200 AND 299 $whereTimeClause");
+        $countriesCount = $db->querySingle("SELECT COUNT(DISTINCT country) FROM analytics WHERE country IS NOT NULL AND status BETWEEN 200 AND 299 $whereTimeClause");
 
         // Format data for JavaScript
         $mapDataJSON = json_encode($mapData);
@@ -96,7 +95,7 @@ try {
         $result = $db->query("
             SELECT country, COUNT(*) as count 
             FROM analytics 
-            WHERE country IS NOT NULL $whereTimeClause
+            WHERE country IS NOT NULL AND status BETWEEN 200 AND 299 $whereTimeClause
             GROUP BY country 
             ORDER BY count DESC 
             LIMIT 10
@@ -108,18 +107,44 @@ try {
         // Get top visited pages with time filter
         $topPages = [];
         $result = $db->query("
-            SELECT REPLACE(url, '://www.', '://') AS url, \n                   COUNT(*) AS total_visits, \n                   COUNT(DISTINCT ip) AS unique_visits\n            FROM analytics \n            WHERE url IS NOT NULL $whereTimeClause\n            GROUP BY REPLACE(url, '://www.', '://')\n            ORDER BY total_visits DESC \n            LIMIT 10\n        ");
+            SELECT REPLACE(url, '://www.', '://') AS url, \n                   COUNT(*) AS total_visits, \n                   COUNT(DISTINCT ip) AS unique_visits\n            FROM analytics \n            WHERE url IS NOT NULL AND status BETWEEN 200 AND 299 $whereTimeClause\n            GROUP BY REPLACE(url, '://www.', '://')\n            ORDER BY total_visits DESC \n            LIMIT 10\n        ");
 
         while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
             $topPages[] = $row;
         }
 
+        // Build data for charts -----------------------------------
+        // DAILY (all time)
+        $dailyVisits = [];
+        $result = $db->query("SELECT strftime('%Y-%m-%d', dt, 'unixepoch') AS period, COUNT(*) AS cnt FROM analytics WHERE status BETWEEN 200 AND 299 GROUP BY period ORDER BY period ASC");
+        while($row=$result->fetchArray(SQLITE3_ASSOC)){$dailyVisits[]=$row;}
+
+        // WEEKLY (ISO week) all time
+        $weeklyVisits = [];
+        $result = $db->query("SELECT strftime('%Y-%W', dt, 'unixepoch') AS period, COUNT(*) AS cnt FROM analytics WHERE status BETWEEN 200 AND 299 GROUP BY period ORDER BY period ASC");
+        while($row=$result->fetchArray(SQLITE3_ASSOC)){$weeklyVisits[]=$row;}
+
+        // MONTHLY all time
+        $monthlyVisits = [];
+        $result = $db->query("SELECT strftime('%Y-%m', dt, 'unixepoch') AS period, COUNT(*) AS cnt FROM analytics WHERE status BETWEEN 200 AND 299 GROUP BY period ORDER BY period ASC");
+        while($row=$result->fetchArray(SQLITE3_ASSOC)){$monthlyVisits[]=$row;}
+
         // Get top referrers with time filter (exclude empty strings)
-        $result = $db->query("\n            SELECT REPLACE(referer, '://www.', '://') AS referer,\n                   COUNT(*) AS count\n            FROM analytics\n            WHERE referer != '' $whereTimeClause\n            GROUP BY REPLACE(referer, '://www.', '://')\n            ORDER BY count DESC\n            LIMIT 10\n        ");
+        $result = $db->query("\n            SELECT REPLACE(referer, '://www.', '://') AS referer,\n                   COUNT(*) AS count\n            FROM analytics\n            WHERE referer != '' AND status BETWEEN 200 AND 299 $whereTimeClause\n            GROUP BY REPLACE(referer, '://www.', '://')\n            ORDER BY count DESC\n            LIMIT 10\n        ");
 
         while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
             $topReferers[] = $row;
         }
+
+        // Build data for charts -----------------------------------
+        // DAILY
+        $dailyVisitsJSON = json_encode($dailyVisits);
+
+        // WEEKLY (ISO week)
+        $weeklyVisitsJSON = json_encode($weeklyVisits);
+
+        // MONTHLY
+        $monthlyVisitsJSON = json_encode($monthlyVisits);
     } finally {
         // Close the database connection regardless of whether an exception occurred
         $db->close();
@@ -136,7 +161,7 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light" id="meta-color-scheme" />
-    <title>Website Visitor Analytics</title>
+    <title>Banalytiq Web Analytics</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -228,6 +253,16 @@ try {
             </button>
         </div>
 
+        <!-- Chart section: View toggle buttons and canvas -->
+        <div class="buttons has-addons is-centered mb-2" id="chart-view-toggle">
+            <button class="button is-small view-btn is-primary" data-view="daily">Daily</button>
+            <button class="button is-small view-btn" data-view="weekly">Weekly</button>
+            <button class="button is-small view-btn" data-view="monthly">Monthly</button>
+        </div>
+        <div class="box mb-5">
+            <canvas id="visits-chart" style="height: 300px;"></canvas>
+        </div>
+
         <div class="buttons has-addons is-centered mb-4">
             <?php foreach ($timeWindows as $label => $seconds): ?>
                 <a href="?time=<?php echo $label; ?><?php echo !empty($custom_name) ? '&db=' . urlencode($custom_name) : ''; ?>" 
@@ -266,7 +301,8 @@ try {
             </div>
         </div>
         
-        <div class="map-container box" id="visitor-map"></div>        
+        <div class="map-container box" id="visitor-map"></div>
+
         <div class="columns is-variable is-3 data-tables">
             <div class="column">
                 <h2>Top Visited Pages</h2>
@@ -290,8 +326,6 @@ try {
                 </table>
             </div>
         </div>
-        <br />
-        <br />
         <div class="columns is-variable is-3 data-tables mt-5">
             <div class="column">
                 <h2>Top Referrers</h2>
@@ -313,8 +347,6 @@ try {
                 </table>
             </div>
         </div>
-        <br />
-        <br />
         <div class="columns is-variable is-3 data-tables mt-5">
             <div class="column">
                 <h2>Top Countries</h2>
@@ -341,6 +373,7 @@ try {
         <p style="margin: 0; padding: 0;"><a href="https://github.com/ediril">Emrah Diril</a> &copy; 2025</p>
         <p style="margin: 0; padding: 0;">Created with ✨ & ❤️</p>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script>
         $(document).ready(function() {
             // Initialize Leaflet map with world bounds
@@ -403,6 +436,92 @@ try {
             
             // Add markers to the map
             addVisitorMarkers();
+
+            // ---------------- Chart ------------------
+            const dailyData = <?php echo $dailyVisitsJSON; ?>;
+            const weeklyData = <?php echo $weeklyVisitsJSON; ?>;
+            const monthlyData = <?php echo $monthlyVisitsJSON; ?>;
+
+            function toDataset(arr, label, color){
+                return {
+                    label: label,
+                    data: arr.map(r=>({x: r.period, y: r.cnt})),
+                    borderColor: color,
+                    backgroundColor: color,
+                    tension:0.2
+                };
+            }
+
+            const chartCtx = document.getElementById('visits-chart').getContext('2d');
+
+            const dailyDS = toDataset(dailyData,'daily','#3b82f6');
+            const weeklyDS = toDataset(weeklyData,'weekly','#10b981');
+            const monthlyDS = toDataset(monthlyData,'monthly','#f59e0b');
+
+            const visitsChart = new Chart(chartCtx, {
+                type: 'line',
+                data: {
+                    datasets: [dailyDS] // start with daily only
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'category',
+                            title:{display:true,text:'Period'}
+                        },
+                        y: {
+                            beginAtZero:true,
+                            title:{display:true,text:'Visits'}
+                        }
+                    },
+                    plugins:{
+                        tooltip:{mode:'index',intersect:false},
+                        legend:{display:false}
+                    }
+                }
+            });
+
+            // Toggle chart views -------------------
+            function setChartView(view){
+                let selectedDS;
+                switch(view){
+                    case 'weekly': selectedDS = weeklyDS; break;
+                    case 'monthly': selectedDS = monthlyDS; break;
+                    default: selectedDS = dailyDS;
+                }
+
+                visitsChart.data.datasets = [selectedDS];
+
+                // Adjust x-axis tick formatter
+                const formatters = {
+                    daily: p => p.slice(5), // MM-DD
+                    weekly: p => 'W' + p.split('-')[1],
+                    monthly: p => p.split('-')[1] // MM
+                };
+
+                visitsChart.options.scales.x.ticks = {
+                    callback: (val, idx) => {
+                        const lbl = selectedDS.data[idx]?.x || '';
+                        return formatters[view] ? formatters[view](lbl) : lbl;
+                    }
+                };
+                visitsChart.update();
+                document.querySelectorAll('.view-btn').forEach(btn=>{
+                    if(btn.dataset.view===view){btn.classList.add('is-primary');btn.classList.remove('is-light');}
+                    else {btn.classList.remove('is-primary');btn.classList.add('is-light');}
+                });
+            }
+            // default to daily
+            setChartView('daily');
+
+            document.getElementById('chart-view-toggle').addEventListener('click', (e)=>{
+                const btn = e.target.closest('.view-btn');
+                if(btn){
+                    setChartView(btn.dataset.view);
+                }
+            });
         });
 
         document.addEventListener('DOMContentLoaded', function () {

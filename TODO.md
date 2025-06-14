@@ -1,5 +1,6 @@
 # Primary
-- Show Visit charts: week-over-week, month-over-month, daily
+
+- Show Visit charts, percent gain: week-over-week, month-over-month
 
 - Track clicked links (internal & external)
 
