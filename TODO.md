@@ -10,6 +10,8 @@
 
 
 # Secondary
+- Add support for ipv6
+
 - Warn when db file is above a certain size
 
 - Delete db after download
