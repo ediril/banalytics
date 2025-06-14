@@ -1,6 +1,4 @@
 # Primary
-- Show top referrers
-
 - Show Visit charts: week-over-week, month-over-month, daily
 
 - Track clicked links (internal & external)
@@ -9,7 +7,6 @@
 
 
 # Secondary
-
 - Warn when db file is above a certain size
 
 - Delete db after download
@@ -17,7 +14,6 @@
 
 
 # Future
-
 - SaaS products that automate website optimization (speed, SEO, image compression, etc.) are rapidly growing. NitroPack, for instance, automates website speed optimization and has over 246,000 customers, showing that niche automation tools can scale quickly to $1 million ARR and beyond
 
 - Trend analysis tool

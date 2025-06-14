@@ -18,6 +18,7 @@ $uniqueVisitors = 0;
 $countriesCount = 0;
 $topCountries = [];
 $topPages = [];
+$topReferers = [];
 $error_message = null;
 $ipsNeedingGeocodingCount = 0;
 
@@ -104,20 +105,20 @@ try {
         while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
             $topCountries[] = $row;
         }
-
         // Get top visited pages with time filter
         $topPages = [];
         $result = $db->query("
-            SELECT url, COUNT(*) AS total_visits, COUNT(DISTINCT ip) AS unique_visits
-            FROM analytics 
-            WHERE url IS NOT NULL $whereTimeClause
-            GROUP BY url 
-            ORDER BY total_visits DESC 
-            LIMIT 10
-        ");
+            SELECT REPLACE(url, '://www.', '://') AS url, \n                   COUNT(*) AS total_visits, \n                   COUNT(DISTINCT ip) AS unique_visits\n            FROM analytics \n            WHERE url IS NOT NULL $whereTimeClause\n            GROUP BY REPLACE(url, '://www.', '://')\n            ORDER BY total_visits DESC \n            LIMIT 10\n        ");
 
         while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
             $topPages[] = $row;
+        }
+
+        // Get top referrers with time filter (exclude empty strings)
+        $result = $db->query("\n            SELECT REPLACE(referer, '://www.', '://') AS referer,\n                   COUNT(*) AS count\n            FROM analytics\n            WHERE referer != '' $whereTimeClause\n            GROUP BY REPLACE(referer, '://www.', '://')\n            ORDER BY count DESC\n            LIMIT 10\n        ");
+
+        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            $topReferers[] = $row;
         }
     } finally {
         // Close the database connection regardless of whether an exception occurred
@@ -130,45 +131,21 @@ try {
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light" id="meta-color-scheme" />
     <title>Website Visitor Analytics</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css">
     <style>
         .map-container {
             height: 500px;
-            margin-bottom: 30px;
             border-radius: 5px;
             overflow: hidden;
-        }
-        .stats-container {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 30px;
-        }
-        .stat-box {
-            background-color: #f9f9f9;
-            border-radius: 5px;
-            padding: 15px;
-            flex: 1;
-            margin: 0 10px;
-            text-align: center;
-            box-shadow: 0 0 5px rgba(0,0,0,0.05);
-        }
-        .stat-box h3 {
-            margin-top: 0;
-            color: #666;
-        }
-        .stat-box p {
-            font-size: 24px;
-            font-weight: bold;
-            margin: 10px 0 0;
-            color: #333;
         }
         .data-tables {
             display: flex;
@@ -186,6 +163,8 @@ try {
             padding: 8px;
             border: 1px solid #ddd;
             text-align: left;
+            overflow-wrap: anywhere; /* Wrap long words/URLs */
+            word-break: break-word;  /* Additional wrapping support */
         }
         table th {
             background-color: #f2f2f2;
@@ -241,20 +220,21 @@ try {
 </head>
 <body>
     <div class="container my-5">
-        <div class="content has-text-centered">
+        <div class="content has-text-centered" style="position: relative;">
             <h1>BANALYTIQ</h1>
             <h3>Database file: <?php echo htmlspecialchars(basename($db_path)); ?></h3>
+            <button id="theme-toggle" class="button is-small" style="position: absolute; top: 0; right: 0;">
+                🌙
+            </button>
         </div>
 
-        <div class="time-filter">
-            <div class="time-filter-buttons">
-                <?php foreach ($timeWindows as $label => $seconds): ?>
+        <div class="buttons has-addons is-centered mb-4">
+            <?php foreach ($timeWindows as $label => $seconds): ?>
                 <a href="?time=<?php echo $label; ?><?php echo !empty($custom_name) ? '&db=' . urlencode($custom_name) : ''; ?>" 
-                   class="time-button <?php echo $timeWindow === $label ? 'active' : ''; ?>">
+                   class="button time-btn <?php echo $timeWindow === $label ? 'is-primary' : 'is-light'; ?>" data-time="<?php echo $label; ?>">
                     <?php echo $label; ?>
                 </a>
-                <?php endforeach; ?>
-            </div>
+            <?php endforeach; ?>
         </div>
 
         <?php if ($ipsNeedingGeocodingCount > 0): ?>
@@ -265,59 +245,91 @@ try {
         </div>
         <?php endif; ?>
 
-        <div class="stats-container">
-            <div class="stat-box">
-                <h3>Total Visits</h3>
-                <p><?php echo number_format($totalVisits); ?></p>
+        <div class="columns is-variable is-3 my-4 has-text-centered">
+            <div class="column is-one-third">
+                <div class="box stats-box mb-0 has-background-grey-lighter has-text-weight-bold is-flex is-flex-direction-column is-justify-content-center is-align-items-center">
+                    <h3>Total Visits</h3>
+                    <p><?php echo number_format($totalVisits); ?></p>
+                </div>
             </div>
-            <div class="stat-box">
-                <h3>Unique Visitors</h3>
-                <p><?php echo number_format($uniqueVisitors); ?></p>
+            <div class="column is-one-third">
+                <div class="box stats-box mb-0 has-background-grey-lighter has-text-weight-bold is-flex is-flex-direction-column is-justify-content-center is-align-items-center">
+                    <h3>Unique Visitors</h3>
+                    <p><?php echo number_format($uniqueVisitors); ?></p>
+                </div>
             </div>
-            <div class="stat-box">
-                <h3>Countries</h3>
-                <p><?php echo number_format($countriesCount); ?></p>
+            <div class="column is-one-third">
+                <div class="box stats-box mb-0 has-background-grey-lighter has-text-weight-bold is-flex is-flex-direction-column is-justify-content-center is-align-items-center">
+                    <h3>Countries</h3>
+                    <p><?php echo number_format($countriesCount); ?></p>
+                </div>
             </div>
         </div>
         
-        <div class="map-container" id="visitor-map"></div>        
-        <div class="data-tables">
-            <div class="data-table">
-                <h2>Top Countries</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Country</th>
-                            <th>Visits</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($topCountries as $country): ?>
-                        <tr>
-                            <td><?php echo htmlspecialchars($country['country']); ?></td>
-                            <td><?php echo number_format($country['count']); ?></td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-            
-            <div class="data-table">
+        <div class="map-container box" id="visitor-map"></div>        
+        <div class="columns is-variable is-3 data-tables">
+            <div class="column">
                 <h2>Top Visited Pages</h2>
-                <table>
+                <table class="table is-striped is-fullwidth is-bordered is-hoverable">
                     <thead>
                         <tr>
                             <th>Page</th>
-                            <th>Total Visits</th>
-                            <th>Unique Visitors</th>
+                            <th class="has-text-right">Total Visits</th>
+                            <th class="has-text-right">Unique Visitors</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($topPages as $page): ?>
                         <tr>
                             <td><?php echo htmlspecialchars($page['url']); ?></td>
-                            <td><?php echo number_format($page['total_visits']); ?></td>
-                            <td><?php echo number_format($page['unique_visits']); ?></td>
+                            <td class="has-text-right"><?php echo number_format($page['total_visits']); ?></td>
+                            <td class="has-text-right"><?php echo number_format($page['unique_visits']); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <br />
+        <br />
+        <div class="columns is-variable is-3 data-tables mt-5">
+            <div class="column">
+                <h2>Top Referrers</h2>
+                <table class="table is-striped is-fullwidth is-bordered is-hoverable">
+                    <thead>
+                        <tr>
+                            <th>Referrer</th>
+                            <th class="has-text-right">Visits</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($topReferers as $ref): ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars($ref['referer']); ?></td>
+                            <td class="has-text-right"><?php echo number_format($ref['count']); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <br />
+        <br />
+        <div class="columns is-variable is-3 data-tables mt-5">
+            <div class="column">
+                <h2>Top Countries</h2>
+                <table class="table is-striped is-fullwidth is-bordered is-hoverable">
+                    <thead>
+                        <tr>
+                            <th>Country</th>
+                            <th class="has-text-right">Visits</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($topCountries as $country): ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars($country['country']); ?></td>
+                            <td class="has-text-right"><?php echo number_format($country['count']); ?></td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -327,7 +339,7 @@ try {
     </div>
     <div class="content has-text-centered">
         <p style="margin: 0; padding: 0;"><a href="https://github.com/ediril">Emrah Diril</a> &copy; 2025</p>
-        <p style="margin: 0; padding: 0;">Created with vibes & ❤️</p>
+        <p style="margin: 0; padding: 0;">Created with ✨ & ❤️</p>
     </div>
     <script>
         $(document).ready(function() {
@@ -391,6 +403,61 @@ try {
             
             // Add markers to the map
             addVisitorMarkers();
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const toggleBtn = document.getElementById('theme-toggle');
+            const root = document.documentElement;
+            const metaColorScheme = document.getElementById('meta-color-scheme');
+
+            // Apply stored preference
+            const storedTheme = localStorage.getItem('banalytiq-theme');
+            if (storedTheme) {
+                root.setAttribute('data-theme', storedTheme);
+                metaColorScheme.setAttribute('content', storedTheme);
+                toggleBtn.textContent = storedTheme === 'dark' ? '☀️' : '🌙';
+            }
+
+            function applyThemeClasses(theme){
+                // time buttons
+                document.querySelectorAll('.time-btn').forEach(btn => {
+                    if(btn.classList.contains('is-primary')) return; // active button keeps primary
+                    if(theme==='dark'){
+                        btn.classList.remove('is-light');
+                        btn.classList.add('is-dark');
+                    } else {
+                        btn.classList.remove('is-dark');
+                        btn.classList.add('is-light');
+                    }
+                });
+                // stats boxes
+                document.querySelectorAll('.stats-box').forEach(box => {
+                    if(theme==='dark'){
+                        box.classList.remove('has-background-grey-lighter','has-text-weight-bold');
+                        box.classList.add('has-background-dark','has-text-light');
+                    } else {
+                        box.classList.remove('has-background-dark','has-text-light');
+                        box.classList.add('has-background-grey-lighter','has-text-weight-bold');
+                    }
+                });
+            }
+
+            const setTheme = (next)=>{
+                root.setAttribute('data-theme', next);
+                metaColorScheme.setAttribute('content', next);
+                localStorage.setItem('banalytiq-theme', next);
+                toggleBtn.textContent = next === 'dark' ? '☀️' : '🌙';
+                applyThemeClasses(next);
+            };
+
+            // initial
+            applyThemeClasses(root.getAttribute('data-theme')||'light');
+
+            toggleBtn.addEventListener('click', () => {
+                const current = root.getAttribute('data-theme') || 'light';
+                const next = current === 'light' ? 'dark' : 'light';
+                setTheme(next);
+            });
         });
     </script>
 </body>
