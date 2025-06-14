@@ -370,7 +370,7 @@ try {
         </div>
     </div>
     <div class="content has-text-centered">
-        <p style="margin: 0; padding: 0;"><a href="https://github.com/ediril">Emrah Diril</a> &copy; 2025</p>
+        <p style="margin: 0; padding: 0;"><a href="https://x.com/emrahdx">Emrah Diril</a> &copy; 2025</p>
         <p style="margin: 0; padding: 0;">Created with ✨ & ❤️</p>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
