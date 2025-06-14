@@ -1,10 +1,6 @@
 # Primary
 - Show top referrers
 
-- Show top visited pages
-    - Show visitors per page to top X pages
-
-
 - Show Visit charts: week-over-week, month-over-month, daily
 
 - Track clicked links (internal & external)

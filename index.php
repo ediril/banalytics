@@ -17,7 +17,7 @@ $totalVisits = 0;
 $uniqueVisitors = 0;
 $countriesCount = 0;
 $topCountries = [];
-$recentVisitors = [];
+$topPages = [];
 $error_message = null;
 $ipsNeedingGeocodingCount = 0;
 
@@ -105,20 +105,19 @@ try {
             $topCountries[] = $row;
         }
 
-        // Get recent visitors with time filter
-        $recentVisitors = [];
+        // Get top visited pages with time filter
+        $topPages = [];
         $result = $db->query("
-            SELECT ip, dt, url, country, city 
+            SELECT url, COUNT(*) AS total_visits, COUNT(DISTINCT ip) AS unique_visits
             FROM analytics 
-            WHERE 1=1 $whereTimeClause
-            ORDER BY dt DESC 
+            WHERE url IS NOT NULL $whereTimeClause
+            GROUP BY url 
+            ORDER BY total_visits DESC 
             LIMIT 10
         ");
 
         while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-            // Convert Unix timestamp to human-readable format
-            $row['dt_formatted'] = date('Y-m-d H:i:s', $row['dt']);
-            $recentVisitors[] = $row;
+            $topPages[] = $row;
         }
     } finally {
         // Close the database connection regardless of whether an exception occurred
@@ -304,28 +303,21 @@ try {
             </div>
             
             <div class="data-table">
-                <h2>Recent Visitors</h2>
+                <h2>Top Visited Pages</h2>
                 <table>
                     <thead>
                         <tr>
-                            <th>Time</th>
-                            <th>Location</th>
                             <th>Page</th>
+                            <th>Total Visits</th>
+                            <th>Unique Visitors</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($recentVisitors as $visitor): ?>
+                        <?php foreach ($topPages as $page): ?>
                         <tr>
-                            <td><?php echo htmlspecialchars($visitor['dt_formatted']); ?></td>
-                            <td>
-                                <?php
-                                $location = [];
-                                if (!empty($visitor['city'])) $location[] = htmlspecialchars($visitor['city']);
-                                if (!empty($visitor['country'])) $location[] = htmlspecialchars($visitor['country']);
-                                echo implode(', ', $location);
-                                ?>
-                            </td>
-                            <td><?php echo htmlspecialchars($visitor['url']); ?></td>
+                            <td><?php echo htmlspecialchars($page['url']); ?></td>
+                            <td><?php echo number_format($page['total_visits']); ?></td>
+                            <td><?php echo number_format($page['unique_visits']); ?></td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
