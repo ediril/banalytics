@@ -1,27 +1,23 @@
 # Primary
-- Add support for exporting db
+- Show top referrers
 
-- Fill in geo data on the web server
+- Show top visited pages
+    - Show visitors per page to top X pages
 
-- Update the geo data in bulk, not one at a time
 
-- Visualization behind password
+- Show Visit charts: week-over-week, month-over-month, daily
 
-- Warn when db file is above a certain size
+- Track clicked links (internal & external)
+
+- Track data entered to input/search boxes 
 
 
 # Secondary
 
-- Track data entered to input/search boxes 
+- Warn when db file is above a certain size
 
-- Track clicked links (internal & external)
-
-- How can i see who referred a user to my site's page using PHP: https://www.perplexity.ai/search/how-can-i-see-who-referred-a-u-omJx7fnuRhuiLD6shEfYCQ
-
-- Show visitors per page to top X pages
-
-- Implement download() method to fetch the database from the webserver
-    - Look for yaml config file for ftp creds
+- Delete db after download
+    - Merge downloaded db with the local existing db
 
 
 # Future
