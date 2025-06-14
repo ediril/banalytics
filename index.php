@@ -136,14 +136,14 @@ try {
             $topReferers[] = $row;
         }
 
-        // Build data for charts -----------------------------------
-        // DAILY
+        // Remove the most recent (potentially incomplete) period from each dataset
+        if (count($dailyVisits) > 0) array_pop($dailyVisits);
+        if (count($weeklyVisits) > 0) array_pop($weeklyVisits);
+        if (count($monthlyVisits) > 0) array_pop($monthlyVisits);
+
+        // Encode for JavaScript
         $dailyVisitsJSON = json_encode($dailyVisits);
-
-        // WEEKLY (ISO week)
         $weeklyVisitsJSON = json_encode($weeklyVisits);
-
-        // MONTHLY
         $monthlyVisitsJSON = json_encode($monthlyVisits);
     } finally {
         // Close the database connection regardless of whether an exception occurred
@@ -263,9 +263,9 @@ try {
             <canvas id="visits-chart" style="height: 300px;"></canvas>
         </div>
 
-        <div class="buttons has-addons is-centered mb-4">
+        <div class="buttons has-addons is-centered mb-4" id="time-filter-bar">
             <?php foreach ($timeWindows as $label => $seconds): ?>
-                <a href="?time=<?php echo $label; ?><?php echo !empty($custom_name) ? '&db=' . urlencode($custom_name) : ''; ?>" 
+                <a href="?time=<?php echo $label; ?><?php echo !empty($custom_name) ? '&db=' . urlencode($custom_name) : ''; ?>#time-filter-bar" 
                    class="button time-btn <?php echo $timeWindow === $label ? 'is-primary' : 'is-light'; ?>" data-time="<?php echo $label; ?>">
                     <?php echo $label; ?>
                 </a>
@@ -512,9 +512,13 @@ try {
                     if(btn.dataset.view===view){btn.classList.add('is-primary');btn.classList.remove('is-light');}
                     else {btn.classList.remove('is-primary');btn.classList.add('is-light');}
                 });
+                // persist selection
+                localStorage.setItem('banalytiq-chart-view', view);
             }
-            // default to daily
-            setChartView('daily');
+
+            // initial chart view from storage
+            const storedChartView = localStorage.getItem('banalytiq-chart-view') || 'daily';
+            setChartView(storedChartView);
 
             document.getElementById('chart-view-toggle').addEventListener('click', (e)=>{
                 const btn = e.target.closest('.view-btn');
