@@ -29,10 +29,11 @@ can find the needed function definitions.
 ## Download the database file and fill in city, country, longitude, latitude for the collected IP addresses 
 ```
 $ cd banalytiq
-$ php -r "require download.php; download(); require 'geo.php'; ip2geo();"
+$ php download.php
+$ php geo.php
 ```
 
-Note: `download()` method only works with FTP over TLS. It requires PHP to be compiled with OpenSSL support, and it only works with explicit FTPS.
+Note: `download` script only works with FTP over TLS. It requires PHP to be compiled with OpenSSL support, and it only works with explicit FTPS.
 
 ## Visualize your web traffic
 ```
