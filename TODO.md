@@ -1,10 +1,12 @@
 # Primary
 
-- Show Visit charts, percent gain: week-over-week, month-over-month
-
 - Track clicked links (internal & external)
+    - needs javascript
 
 - Track data entered to input/search boxes 
+
+
+- Show Visit charts, percent gain: week-over-week, month-over-month
 
 
 # Secondary
