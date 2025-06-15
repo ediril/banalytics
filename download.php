@@ -42,7 +42,12 @@ function download_analytics_files($config_path = 'ftp_config.yaml') {
     }
     
     // Connect to FTP server
-    $conn = ftp_ssl_connect($config['host']);
+    // If a custom port is provided in the YAML config, pass it to ftp_ssl_connect; otherwise, rely on the default port (21).
+    if (isset($config['port']) && $config['port'] !== '') {
+        $conn = ftp_ssl_connect($config['host'], (int)$config['port']);
+    } else {
+        $conn = ftp_ssl_connect($config['host']);
+    }
     if (!$conn) {
         die("Failed to connect to FTP server: {$config['host']}");
     }
