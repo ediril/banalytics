@@ -459,7 +459,7 @@ try {
             const monthlyDS = toDataset(monthlyData,'monthly','#f59e0b');
 
             const visitsChart = new Chart(chartCtx, {
-                type: 'line',
+                type: 'bar',
                 data: {
                     datasets: [dailyDS] // start with daily only
                 },
