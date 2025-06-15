@@ -42,7 +42,7 @@ function download_analytics_files($config_path = 'ftp_config.yaml') {
     }
     
     // Connect to FTP server
-    $conn = ftp_ssl_connect($config['host'], $config['port']);
+    $conn = ftp_ssl_connect($config['host']);
     if (!$conn) {
         die("Failed to connect to FTP server: {$config['host']}");
     }
@@ -78,12 +78,11 @@ function download_analytics_files($config_path = 'ftp_config.yaml') {
     }
     
     // Close FTP connection
-    ftp_close($conn);
+    @ftp_close($conn);
 }
 
 // Example usage when script is called directly
 if (basename(__FILE__) === basename($_SERVER['SCRIPT_FILENAME'])) {
     $config_path = isset($argv[1]) ? $argv[1] : 'ftp_config.yaml';
     download_analytics_files($config_path);
-    echo "SUCCESS: Database file downloaded\n";
 }
