@@ -1,5 +1,9 @@
 # Primary
 
+- Merge the newly downloaded data with the local existing data
+
+- Start a new db file periodically, once it reaches a certain size
+
 - Track clicked links (internal & external)
     - needs javascript
 
