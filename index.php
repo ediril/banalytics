@@ -114,19 +114,19 @@ try {
         }
 
         // Build data for charts -----------------------------------
-        // DAILY (all time)
+        // DAILY (within selected time window)
         $dailyVisits = [];
-        $result = $db->query("SELECT strftime('%Y-%m-%d', dt, 'unixepoch') AS period, COUNT(*) AS cnt FROM analytics WHERE status BETWEEN 200 AND 299 GROUP BY period ORDER BY period ASC");
+        $result = $db->query("SELECT strftime('%Y-%m-%d', dt, 'unixepoch') AS period, COUNT(*) AS cnt FROM analytics WHERE status BETWEEN 200 AND 299 $whereTimeClause GROUP BY period ORDER BY period ASC");
         while($row=$result->fetchArray(SQLITE3_ASSOC)){$dailyVisits[]=$row;}
 
-        // WEEKLY (ISO week) all time
+        // WEEKLY (ISO week) within selected time window
         $weeklyVisits = [];
-        $result = $db->query("SELECT strftime('%Y-%W', dt, 'unixepoch') AS period, COUNT(*) AS cnt FROM analytics WHERE status BETWEEN 200 AND 299 GROUP BY period ORDER BY period ASC");
+        $result = $db->query("SELECT strftime('%Y-%W', dt, 'unixepoch') AS period, COUNT(*) AS cnt FROM analytics WHERE status BETWEEN 200 AND 299 $whereTimeClause GROUP BY period ORDER BY period ASC");
         while($row=$result->fetchArray(SQLITE3_ASSOC)){$weeklyVisits[]=$row;}
 
-        // MONTHLY all time
+        // MONTHLY within selected time window
         $monthlyVisits = [];
-        $result = $db->query("SELECT strftime('%Y-%m', dt, 'unixepoch') AS period, COUNT(*) AS cnt FROM analytics WHERE status BETWEEN 200 AND 299 GROUP BY period ORDER BY period ASC");
+        $result = $db->query("SELECT strftime('%Y-%m', dt, 'unixepoch') AS period, COUNT(*) AS cnt FROM analytics WHERE status BETWEEN 200 AND 299 $whereTimeClause GROUP BY period ORDER BY period ASC");
         while($row=$result->fetchArray(SQLITE3_ASSOC)){$monthlyVisits[]=$row;}
 
         // Get top referrers with time filter (exclude empty strings)
@@ -136,10 +136,9 @@ try {
             $topReferers[] = $row;
         }
 
-        // Remove the most recent (potentially incomplete) period from each dataset
-        if (count($dailyVisits) > 0) array_pop($dailyVisits);
-        if (count($weeklyVisits) > 0) array_pop($weeklyVisits);
-        if (count($monthlyVisits) > 0) array_pop($monthlyVisits);
+        // Keep the most recent period in all datasets. It may be incomplete, and
+        // will be rendered with a striped fill on the chart to indicate that it
+        // is still "in progress".
 
         // Encode for JavaScript
         $dailyVisitsJSON = json_encode($dailyVisits);
@@ -245,25 +244,14 @@ try {
 </head>
 <body>
     <div class="container my-5">
-        <div class="content has-text-centered" style="position: relative;">
-            <h1>BANALYTIQ</h1>
-            <h3>Database file: <?php echo htmlspecialchars(basename($db_path)); ?></h3>
+        <div class="content" style="position: relative;">
+            <h1 class="title left-align">BANALYTIQ</h1>
             <button id="theme-toggle" class="button is-small" style="position: absolute; top: 0; right: 0;">
                 🌙
             </button>
         </div>
 
-        <!-- Chart section: View toggle buttons and canvas -->
-        <div class="buttons has-addons is-centered mb-2" id="chart-view-toggle">
-            <button class="button is-small view-btn is-primary" data-view="daily">Daily</button>
-            <button class="button is-small view-btn" data-view="weekly">Weekly</button>
-            <button class="button is-small view-btn" data-view="monthly">Monthly</button>
-        </div>
-        <div class="box mb-5">
-            <canvas id="visits-chart" style="height: 300px;"></canvas>
-        </div>
-
-        <div class="buttons has-addons is-centered mb-4" id="time-filter-bar">
+        <div class="buttons has-addons is-centered mb-3" id="time-filter-bar">
             <?php foreach ($timeWindows as $label => $seconds): ?>
                 <a href="?time=<?php echo $label; ?><?php echo !empty($custom_name) ? '&db=' . urlencode($custom_name) : ''; ?>#time-filter-bar" 
                    class="button time-btn <?php echo $timeWindow === $label ? 'is-primary' : 'is-light'; ?>" data-time="<?php echo $label; ?>">
@@ -272,15 +260,18 @@ try {
             <?php endforeach; ?>
         </div>
 
-        <?php if ($ipsNeedingGeocodingCount > 0): ?>
-        <div class="notification is-warning has-text-centered">
-            <p><strong>Warning:</strong> There are <?php echo $ipsNeedingGeocodingCount; ?> IP address(es) that need geocoding. 
-            Some visitors may not appear on the map.</p>
-            <p>Run <code>php ip2geo.php</code> to add geolocation data to these IPs.</p>
+        <div class="box">
+            <div class="mb-5">
+                <canvas id="visits-chart" style="height: 300px;"></canvas>
+            </div>
+            <div class="buttons has-addons is-centered mb-2" id="chart-view-toggle">
+                <button class="button is-small view-btn is-primary" data-view="daily">Daily</button>
+                <button class="button is-small view-btn" data-view="weekly">Weekly</button>
+                <button class="button is-small view-btn" data-view="monthly">Monthly</button>
+            </div>
         </div>
-        <?php endif; ?>
 
-        <div class="columns is-variable is-3 my-4 has-text-centered">
+        <div class="columns is-variable is-3 my-3 has-text-centered">
             <div class="column is-one-third">
                 <div class="box stats-box mb-0 has-background-grey-lighter has-text-weight-bold is-flex is-flex-direction-column is-justify-content-center is-align-items-center">
                     <h3>Total Visits</h3>
@@ -300,8 +291,6 @@ try {
                 </div>
             </div>
         </div>
-        
-        <div class="map-container box" id="visitor-map"></div>
 
         <div class="columns is-variable is-3 data-tables">
             <div class="column">
@@ -368,6 +357,20 @@ try {
                 </table>
             </div>
         </div>
+
+        <?php if ($ipsNeedingGeocodingCount > 0): ?>
+        <div class="notification is-warning has-text-centered">
+            <p><strong>Warning:</strong> There are <?php echo $ipsNeedingGeocodingCount; ?> IP address(es) that need geocoding. 
+            Some visitors may not appear on the map.</p>
+            <p>Run <code>php ip2geo.php</code> to add geolocation data to these IPs.</p>
+        </div>
+        <?php endif; ?>
+        <div class="map-container box" id="visitor-map"></div>
+
+        <div class="content has-text-centered" style="position: relative;">
+            <h3>Database file: <?php echo htmlspecialchars(basename($db_path)); ?></h3>
+        </div>
+
     </div>
     <div class="content has-text-centered">
         <p style="margin: 0; padding: 0;"><a href="https://x.com/emrahdx">Emrah Diril</a> &copy; 2025</p>
@@ -442,13 +445,38 @@ try {
             const weeklyData = <?php echo $weeklyVisitsJSON; ?>;
             const monthlyData = <?php echo $monthlyVisitsJSON; ?>;
 
+            // helper to generate diagonal stripe pattern for a given color
+            function makeStripePattern(ctx, color){
+                const canvas = document.createElement('canvas');
+                canvas.width = canvas.height = 8;
+                const pctx = canvas.getContext('2d');
+                pctx.strokeStyle = color;
+                pctx.lineWidth = 2;
+                pctx.beginPath();
+                pctx.moveTo(0, 8);
+                pctx.lineTo(8, 0);
+                pctx.stroke();
+                return ctx.createPattern(canvas, 'repeat');
+            }
+
             function toDataset(arr, label, color){
+                let cachedPattern; // lazy-create per dataset
                 return {
                     label: label,
                     data: arr.map(r=>({x: r.period, y: r.cnt})),
                     borderColor: color,
-                    backgroundColor: color,
-                    tension:0.2
+                    backgroundColor: (ctx) => {
+                        const idx = ctx.dataIndex;
+                        const total = ctx.dataset.data.length;
+                        if(idx === total - 1){ // last datapoint -> pattern
+                            if(!cachedPattern){
+                                cachedPattern = makeStripePattern(ctx.chart.ctx, color);
+                            }
+                            return cachedPattern;
+                        }
+                        return color;
+                    },
+                    tension: 0.2
                 };
             }
 
