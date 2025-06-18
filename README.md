@@ -1,3 +1,6 @@
+The simplest, most banal server-side alternative to Google Analytics
+
+# Screenshot
 ![Screenshot](screenshot.jpg)
 
 # How to use
