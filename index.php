@@ -34,7 +34,6 @@ $timeWindows = [
 
 // Get time window from URL parameter, default to 1M (1 month)
 $timeWindow = isset($_GET['time']) && array_key_exists($_GET['time'], $timeWindows) ? $_GET['time'] : '1M';
-$timeFilter = $timeWindows[$timeWindow];
 
 $custom_name = isset($_GET['db']) ? $_GET['db'] : '';
 $db_path = __DIR__ . '/' . (!empty($custom_name) ? $custom_name : BANALYTIQ_DB);
@@ -49,6 +48,63 @@ if (!file_exists($db_path)) {
 
 try {
     $db = new SQLite3($db_path);
+    
+    // Get the oldest timestamp to determine which time filters to enable
+    $oldestTimestamp = $db->querySingle("SELECT MIN(dt) FROM analytics");
+    $dataAgeInSeconds = $oldestTimestamp ? (time() - $oldestTimestamp) : 0;
+    
+    // Determine which time windows should be disabled (exclude 'ALL' - it should always be enabled)
+    $disabledTimeWindows = [];
+    foreach ($timeWindows as $label => $seconds) {
+        if ($seconds > 0 && $dataAgeInSeconds < $seconds && $label !== 'ALL') {
+            $disabledTimeWindows[] = $label;
+        }
+    }
+    
+    // If current time window is disabled, fall back to the largest available window
+    if (in_array($timeWindow, $disabledTimeWindows)) {
+        // Find the largest available time window
+        $availableWindows = array_diff(array_keys($timeWindows), $disabledTimeWindows);
+        if (!empty($availableWindows)) {
+            // Get the window with the largest time span
+            $maxSeconds = 0;
+            $fallbackWindow = '1D';
+            foreach ($availableWindows as $window) {
+                if ($timeWindows[$window] > $maxSeconds) {
+                    $maxSeconds = $timeWindows[$window];
+                    $fallbackWindow = $window;
+                }
+            }
+            $timeWindow = $fallbackWindow;
+        }
+    }
+    
+    $timeFilter = $timeWindows[$timeWindow];
+    
+    // Function to convert seconds to human readable time
+    function secondsToHumanReadable($seconds) {
+        if ($seconds < 60) {
+            return $seconds . ' second' . ($seconds != 1 ? 's' : '') . ' ago';
+        } elseif ($seconds < 3600) {
+            $minutes = floor($seconds / 60);
+            return $minutes . ' minute' . ($minutes != 1 ? 's' : '') . ' ago';
+        } elseif ($seconds < 86400) {
+            $hours = floor($seconds / 3600);
+            return $hours . ' hour' . ($hours != 1 ? 's' : '') . ' ago';
+        } elseif ($seconds < 604800) {
+            $days = floor($seconds / 86400);
+            return $days . ' day' . ($days != 1 ? 's' : '') . ' ago';
+        } elseif ($seconds < 2629746) { // ~30.44 days (average month)
+            $weeks = floor($seconds / 604800);
+            return $weeks . ' week' . ($weeks != 1 ? 's' : '') . ' ago';
+        } elseif ($seconds < 31556952) { // ~365.25 days (average year)
+            $months = floor($seconds / 2629746);
+            return $months . ' month' . ($months != 1 ? 's' : '') . ' ago';
+        } else {
+            $years = floor($seconds / 31556952);
+            return $years . ' year' . ($years != 1 ? 's' : '') . ' ago';
+        }
+    }
     
     // Check if there are IPs that need geocoding
     $ipsNeedingGeocodingCount = $db->querySingle("
@@ -119,9 +175,17 @@ try {
         $result = $db->query("SELECT strftime('%Y-%m-%d', dt, 'unixepoch') AS period, COUNT(*) AS cnt FROM analytics WHERE status BETWEEN 200 AND 299 $whereTimeClause GROUP BY period ORDER BY period ASC");
         while($row=$result->fetchArray(SQLITE3_ASSOC)){$dailyVisits[]=$row;}
 
-        // WEEKLY (ISO week) within selected time window
+        // WEEKLY (ISO week) within selected time window - get the Monday of each week
         $weeklyVisits = [];
-        $result = $db->query("SELECT strftime('%Y-%W', dt, 'unixepoch') AS period, COUNT(*) AS cnt FROM analytics WHERE status BETWEEN 200 AND 299 $whereTimeClause GROUP BY period ORDER BY period ASC");
+        $result = $db->query("
+            SELECT 
+                strftime('%Y-%m-%d', dt, 'unixepoch', 'weekday 0', '-6 days') AS period,
+                COUNT(*) AS cnt 
+            FROM analytics 
+            WHERE status BETWEEN 200 AND 299 $whereTimeClause 
+            GROUP BY strftime('%Y-%W', dt, 'unixepoch') 
+            ORDER BY period ASC
+        ");
         while($row=$result->fetchArray(SQLITE3_ASSOC)){$weeklyVisits[]=$row;}
 
         // MONTHLY within selected time window
@@ -240,6 +304,12 @@ try {
         .time-button:hover:not(.active) {
             background-color: #e0e0e0;
         }
+        /* Disabled time buttons */
+        .button.is-disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -252,13 +322,30 @@ try {
         </div>
 
         <div class="buttons has-addons is-centered mb-3" id="time-filter-bar">
-            <?php foreach ($timeWindows as $label => $seconds): ?>
-                <a href="?time=<?php echo $label; ?><?php echo !empty($custom_name) ? '&db=' . urlencode($custom_name) : ''; ?>#time-filter-bar" 
-                   class="button time-btn <?php echo $timeWindow === $label ? 'is-primary' : 'is-light'; ?>" data-time="<?php echo $label; ?>">
-                    <?php echo $label; ?>
-                </a>
+            <?php foreach ($timeWindows as $label => $seconds): 
+                $isDisabled = in_array($label, $disabledTimeWindows);
+                $isActive = $timeWindow === $label;
+            ?>
+                <?php if ($isDisabled): ?>
+                    <span class="button time-btn is-light is-disabled" data-time="<?php echo $label; ?>" title="Not enough data for this time period">
+                        <?php echo $label; ?>
+                    </span>
+                <?php else: ?>
+                    <a href="?time=<?php echo $label; ?><?php echo !empty($custom_name) ? '&db=' . urlencode($custom_name) : ''; ?>#time-filter-bar" 
+                       class="button time-btn <?php echo $isActive ? 'is-primary' : 'is-light'; ?>" data-time="<?php echo $label; ?>">
+                        <?php echo $label; ?>
+                    </a>
+                <?php endif; ?>
             <?php endforeach; ?>
         </div>
+
+        <?php if ($oldestTimestamp): ?>
+        <div class="has-text-centered mb-4">
+            <p class="has-text-grey">
+                <small>Oldest timestamp: <span title="<?php echo date('Y-m-d', $oldestTimestamp); ?>" style="text-decoration: underline dotted; cursor: help;"><?php echo secondsToHumanReadable($dataAgeInSeconds); ?></span></small>
+            </p>
+        </div>
+        <?php endif; ?>
 
         <div class="box">
             <div class="mb-5">
@@ -525,7 +612,7 @@ try {
                 // Adjust x-axis tick formatter
                 const formatters = {
                     daily: p => p.slice(5), // MM-DD
-                    weekly: p => 'W' + p.split('-')[1],
+                    weekly: p => p.slice(5), // MM-DD (beginning of week)
                     monthly: p => p.split('-')[1] // MM
                 };
 
@@ -573,6 +660,7 @@ try {
                 // time buttons
                 document.querySelectorAll('.time-btn').forEach(btn => {
                     if(btn.classList.contains('is-primary')) return; // active button keeps primary
+                    if(btn.classList.contains('is-disabled')) return; // disabled buttons keep their styling
                     if(theme==='dark'){
                         btn.classList.remove('is-light');
                         btn.classList.add('is-dark');
