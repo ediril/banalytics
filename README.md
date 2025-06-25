@@ -43,6 +43,10 @@ Note: `download` script only works with FTP over TLS. It requires PHP to be comp
 $ php -S localhost:8000
 ```
 
+To view the default `banalytiq.db` file, simply go to http://localhost:8000
+
+To view a custom db file, go to http://localhost:8000/?db=custom-db-file.db
+
 # How to apply updates to the submodule
 ```
 $ git submodule update --remote

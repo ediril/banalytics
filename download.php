@@ -63,11 +63,10 @@ function download_analytics_files($config_path = 'ftp_config.yaml') {
 
     $local_file = __DIR__ . '/banalytiq.db';
     if (file_exists($local_file)) {
-        $timestamp = filemtime($local_file);
-        $new_file = $local_file . '.' . $timestamp . '.bak';
-        rename($local_file, $new_file);
-        echo "Renamed existing file `$local_file` to `$new_file`\n";
+        $local_file = __DIR__ . '/banalytiq.' . time() . '.db';
+        echo "banalytiq.db already exists, downloading to `$local_file`\n";
     }
+
     // if $config['remote_path'] doesn't end with a slash, add it
     if ($config['remote_path'][-1] !== '/') {
         $config['remote_path'] .= '/';
