@@ -15,6 +15,11 @@ $ cd banalytiq
 $ php -r "require 'banalytiq.php'; create_db();"
 ```
 
+## Create a `config.yaml` file with your domain name:
+```
+$ echo "domain: <your-domain-name>" > config.yaml
+```
+
 ## Include banalytiq.php in your application's `index.php`
 ```php
 <?php

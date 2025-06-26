@@ -4,6 +4,31 @@
 
 require_once __DIR__ . '/defines.php';
 
+// Load configuration
+$config = [];
+$configFile = __DIR__ . '/config.yaml';
+if (file_exists($configFile)) {
+    if (function_exists('yaml_parse_file')) {
+        $config = yaml_parse_file($configFile);
+    } else {
+        // Fallback: simple YAML parsing for our basic config
+        $lines = file($configFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (strpos($line, '#') === 0) continue; // Skip comments
+            if (strpos($line, ':') !== false) {
+                list($key, $value) = explode(':', $line, 2);
+                $config[trim($key)] = trim($value, ' "\'');
+            }
+        }
+    }
+}
+
+if (!isset($config['domain'])) {
+    throw new Exception('Domain not found in config.yaml file. Please set the domain configuration.');
+}
+$domain = $config['domain'];
+
 if (!str_starts_with($_SERVER['HTTP_HOST'], 'localhost') && !str_starts_with($_SERVER['HTTP_HOST'], '127.0.0.1')) {
     http_response_code(404);
     echo "<!DOCTYPE html><html><head><title>404 Not Found</title></head><body>404 Not Found</body></html>";
@@ -163,7 +188,13 @@ try {
         // Get top visited pages with time filter
         $topPages = [];
         $result = $db->query("
-            SELECT REPLACE(url, '://www.', '://') AS url, \n                   COUNT(*) AS total_visits, \n                   COUNT(DISTINCT ip) AS unique_visits\n            FROM analytics \n            WHERE url IS NOT NULL AND status BETWEEN 200 AND 299 $whereTimeClause\n            GROUP BY REPLACE(url, '://www.', '://')\n            ORDER BY total_visits DESC \n            LIMIT 10\n        ");
+            SELECT REPLACE(url, '://www.', '://') AS url, COUNT(*) AS total_visits, COUNT(DISTINCT ip) AS unique_visits
+            FROM analytics 
+            WHERE url IS NOT NULL AND status BETWEEN 200 AND 299 AND REPLACE(url, '://www.', '://') NOT LIKE '%/' $whereTimeClause
+            GROUP BY REPLACE(url, '://www.', '://')
+            ORDER BY total_visits DESC 
+            LIMIT 10
+        ");
 
         while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
             $topPages[] = $row;
@@ -194,10 +225,79 @@ try {
         while($row=$result->fetchArray(SQLITE3_ASSOC)){$monthlyVisits[]=$row;}
 
         // Get top referrers with time filter (exclude empty strings)
-        $result = $db->query("\n            SELECT REPLACE(referer, '://www.', '://') AS referer,\n                   COUNT(*) AS count\n            FROM analytics\n            WHERE referer != '' AND status BETWEEN 200 AND 299 $whereTimeClause\n            GROUP BY REPLACE(referer, '://www.', '://')\n            ORDER BY count DESC\n            LIMIT 10\n        ");
+        $httpsPattern = "https://{$domain}/%";
+        $httpPattern = "http://{$domain}/%";
+        $result = $db->query("
+            SELECT 
+                CASE 
+                    WHEN REPLACE(referer, '://www.', '://') LIKE '{$httpsPattern}' 
+                        OR REPLACE(referer, '://www.', '://') LIKE '{$httpPattern}' 
+                    THEN '[Self Referral]'
+                    ELSE REPLACE(referer, '://www.', '://')
+                END AS referer,
+                COUNT(*) AS count
+            FROM analytics
+            WHERE referer != '' AND status BETWEEN 200 AND 299 $whereTimeClause
+            GROUP BY 
+                CASE 
+                    WHEN REPLACE(referer, '://www.', '://') LIKE '{$httpsPattern}' 
+                        OR REPLACE(referer, '://www.', '://') LIKE '{$httpPattern}' 
+                    THEN '[Self Referral]'
+                    ELSE REPLACE(referer, '://www.', '://')
+                END
+            ORDER BY count DESC
+            LIMIT 10
+        ");
 
         while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
             $topReferers[] = $row;
+        }
+
+        // Get recently visited pages with time filter
+        $recentPages = [];
+        $result = $db->query("
+            SELECT REPLACE(url, '://www.', '://') AS url, 
+                   MAX(dt) AS last_visit,
+                   COUNT(*) AS total_visits, 
+                   COUNT(DISTINCT ip) AS unique_visits
+            FROM analytics 
+            WHERE url IS NOT NULL AND status BETWEEN 200 AND 299 AND REPLACE(url, '://www.', '://') NOT LIKE '%/' $whereTimeClause
+            GROUP BY REPLACE(url, '://www.', '://')
+            ORDER BY last_visit DESC 
+            LIMIT 10
+        ");
+
+        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            $recentPages[] = $row;
+        }
+
+        // Get recent referrers with time filter (exclude empty strings)
+        $recentReferers = [];
+        $result = $db->query("
+            SELECT 
+                CASE 
+                    WHEN REPLACE(referer, '://www.', '://') LIKE '{$httpsPattern}' 
+                        OR REPLACE(referer, '://www.', '://') LIKE '{$httpPattern}' 
+                    THEN '[Self Referral]'
+                    ELSE REPLACE(referer, '://www.', '://')
+                END AS referer,
+                MAX(dt) AS last_referral,
+                COUNT(*) AS count
+            FROM analytics
+            WHERE referer != '' AND status BETWEEN 200 AND 299 $whereTimeClause
+            GROUP BY 
+                CASE 
+                    WHEN REPLACE(referer, '://www.', '://') LIKE '{$httpsPattern}' 
+                        OR REPLACE(referer, '://www.', '://') LIKE '{$httpPattern}' 
+                    THEN '[Self Referral]'
+                    ELSE REPLACE(referer, '://www.', '://')
+                END
+            ORDER BY last_referral DESC
+            LIMIT 10
+        ");
+
+        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            $recentReferers[] = $row;
         }
 
         // Keep the most recent period in all datasets. It may be incomplete, and
@@ -310,6 +410,30 @@ try {
             cursor: not-allowed;
             pointer-events: none;
         }
+        /* Table column widths for better readability */
+        .recent-referrers-table th:nth-child(2),
+        .recent-referrers-table td:nth-child(2) {
+            width: 120px;
+            min-width: 120px;
+            white-space: nowrap;
+        }
+        .recent-referrers-table th:nth-child(3),
+        .recent-referrers-table td:nth-child(3) {
+            width: 100px;
+            min-width: 100px;
+            white-space: nowrap;
+        }
+        /* Table titles styling */
+        .data-tables h2 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+        /* Table titles styling for dark mode */
+        [data-theme="dark"] .data-tables h2 {
+            color: #e0e0e0;
+        }
     </style>
 </head>
 <body>
@@ -348,17 +472,17 @@ try {
         <?php endif; ?>
 
         <div class="box">
-            <div class="mb-5">
+            <div class="mb-4">
                 <canvas id="visits-chart" style="height: 300px;"></canvas>
             </div>
-            <div class="buttons has-addons is-centered mb-2" id="chart-view-toggle">
+            <div class="buttons has-addons is-centered" id="chart-view-toggle">
                 <button class="button is-small view-btn is-primary" data-view="daily">Daily</button>
                 <button class="button is-small view-btn" data-view="weekly">Weekly</button>
                 <button class="button is-small view-btn" data-view="monthly">Monthly</button>
             </div>
         </div>
 
-        <div class="columns is-variable is-3 my-3 has-text-centered">
+        <div class="columns is-variable is-3 has-text-centered">
             <div class="column is-one-third">
                 <div class="box stats-box mb-0 has-background-grey-lighter has-text-weight-bold is-flex is-flex-direction-column is-justify-content-center is-align-items-center">
                     <h3>Total Visits</h3>
@@ -379,7 +503,7 @@ try {
             </div>
         </div>
 
-        <div class="columns is-variable is-3 data-tables">
+        <div class="columns is-variable is-3 data-tables mt-3">
             <div class="column">
                 <h2>Top Visited Pages</h2>
                 <table class="table is-striped is-fullwidth is-bordered is-hoverable">
@@ -401,8 +525,6 @@ try {
                     </tbody>
                 </table>
             </div>
-        </div>
-        <div class="columns is-variable is-3 data-tables mt-5">
             <div class="column">
                 <h2>Top Referrers</h2>
                 <table class="table is-striped is-fullwidth is-bordered is-hoverable">
@@ -416,6 +538,50 @@ try {
                         <?php foreach ($topReferers as $ref): ?>
                         <tr>
                             <td><?php echo htmlspecialchars($ref['referer']); ?></td>
+                            <td class="has-text-right"><?php echo number_format($ref['count']); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="columns is-variable is-3 data-tables mt-3">
+            <div class="column">
+                <h2>Recently Visited Pages</h2>
+                <table class="table is-striped is-fullwidth is-bordered is-hoverable">
+                    <thead>
+                        <tr>
+                            <th>Page</th>
+                            <th class="has-text-right">Last Visit</th>
+                            <th class="has-text-right">Total Visits</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($recentPages as $page): ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars($page['url']); ?></td>
+                            <td class="has-text-right"><?php echo secondsToHumanReadable(time() - $page['last_visit']); ?></td>
+                            <td class="has-text-right"><?php echo number_format($page['total_visits']); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <div class="column">
+                <h2>Recent Referrers</h2>
+                <table class="table is-striped is-fullwidth is-bordered is-hoverable recent-referrers-table">
+                    <thead>
+                        <tr>
+                            <th>Referrer</th>
+                            <th class="has-text-right">Last Referral</th>
+                            <th class="has-text-right">Total Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($recentReferers as $ref): ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars($ref['referer']); ?></td>
+                            <td class="has-text-right"><?php echo secondsToHumanReadable(time() - $ref['last_referral']); ?></td>
                             <td class="has-text-right"><?php echo number_format($ref['count']); ?></td>
                         </tr>
                         <?php endforeach; ?>
