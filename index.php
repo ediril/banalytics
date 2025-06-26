@@ -411,17 +411,35 @@ try {
             pointer-events: none;
         }
         /* Table column widths for better readability */
-        .recent-referrers-table th:nth-child(2),
-        .recent-referrers-table td:nth-child(2) {
+        /* First column (Page/Referrer/Country) - flexible with wrapping */
+        .data-tables table th:nth-child(1),
+        .data-tables table td:nth-child(1) {
+            width: auto;
+            min-width: 200px;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+        
+        /* Numeric columns - fixed width, no wrapping */
+        .data-tables table th:nth-child(2),
+        .data-tables table td:nth-child(2) {
             width: 120px;
             min-width: 120px;
             white-space: nowrap;
         }
-        .recent-referrers-table th:nth-child(3),
-        .recent-referrers-table td:nth-child(3) {
+        
+        .data-tables table th:nth-child(3),
+        .data-tables table td:nth-child(3) {
+            width: 120px;
+            min-width: 120px;
+            white-space: nowrap;
+        }
+        
+        /* For tables with only 2 columns (Top Referrers, Top Countries) */
+        .data-tables table th:nth-child(2):last-child,
+        .data-tables table td:nth-child(2):last-child {
             width: 100px;
             min-width: 100px;
-            white-space: nowrap;
         }
         /* Table titles styling */
         .data-tables h2 {
@@ -434,15 +452,101 @@ try {
         [data-theme="dark"] .data-tables h2 {
             color: #e0e0e0;
         }
+        
+        /* Time filter buttons dark mode styling */
+        [data-theme="dark"] .time-btn.is-light {
+            background-color: #4a5568;
+            color: #e0e0e0;
+            border-color: #4a5568;
+        }
+        
+        [data-theme="dark"] .time-btn.is-dark {
+            background-color: #2d3748;
+            color: #a0aec0;
+            border-color: #2d3748;
+        }
+        
+        [data-theme="dark"] .time-btn.is-primary {
+            background-color: #10b981;
+            color: white;
+            border-color: #10b981;
+        }
+        
+        /* Disabled buttons in dark mode - much darker */
+        [data-theme="dark"] .time-btn.is-disabled {
+            background-color: #1a202c !important;
+            color: #4a5568 !important;
+            border-color: #1a202c !important;
+        }
+        
+        /* Hover effects for enabled buttons in dark mode */
+        [data-theme="dark"] .time-btn.is-light:hover:not(.is-disabled) {
+            background-color: #5a6578;
+        }
+        
+        [data-theme="dark"] .time-btn.is-dark:hover:not(.is-disabled) {
+            background-color: #3a4556;
+        }
+        
+        [data-theme="dark"] .time-btn.is-primary:hover {
+            background-color: #0ea572;
+        }
+        
+        /* Hover effects for enabled buttons in light mode */
+        .time-btn.is-light:hover:not(.is-disabled) {
+            background-color: #d0d7de;
+        }
+        
+        .time-btn.is-dark:hover:not(.is-disabled) {
+            background-color: #2c3e50;
+        }
+        
+        .time-btn.is-primary:hover {
+            background-color: #0ea572;
+        }
+        
+        /* Chart view buttons dark mode styling */
+        [data-theme="dark"] .view-btn.is-light {
+            background-color: #4a5568;
+            color: #e0e0e0;
+            border-color: #4a5568;
+        }
+        
+        [data-theme="dark"] .view-btn.is-primary {
+            background-color: #10b981;
+            color: white;
+            border-color: #10b981;
+        }
+        
+        /* Chart view buttons hover effects for dark mode */
+        [data-theme="dark"] .view-btn.is-light:hover {
+            background-color: #5a6578;
+        }
+        
+        [data-theme="dark"] .view-btn.is-primary:hover {
+            background-color: #0ea572;
+        }
+        
+        /* Chart view buttons hover effects for light mode */
+        .view-btn.is-light:hover {
+            background-color: #d0d7de;
+        }
+        
+        .view-btn.is-primary:hover {
+            background-color: #0ea572;
+        }
     </style>
 </head>
 <body>
     <div class="container my-5">
-        <div class="content" style="position: relative;">
-            <h1 class="title left-align">BANALYTIQ</h1>
-            <button id="theme-toggle" class="button is-small" style="position: absolute; top: 0; right: 0;">
-                🌙
-            </button>
+        <div class="content" style="display: grid; grid-template-columns: 1fr auto 1fr; align-items: baseline;">
+            <h1 class="title mb-0" style="font-variant: small-caps;">Banalytiq</h1>
+            <h1 class="title mb-0" style="justify-self: center;"><?php echo htmlspecialchars($domain); ?></h1>
+            <div style="justify-self: end; align-self: end;">
+                <button id="theme-toggle" class="button is-small" style="width: 2rem; height: 2rem; min-width: 2rem;">
+                    🌙
+                </button>
+            </div>
         </div>
 
         <div class="buttons has-addons is-centered mb-3" id="time-filter-bar">
@@ -569,7 +673,7 @@ try {
             </div>
             <div class="column">
                 <h2>Recent Referrers</h2>
-                <table class="table is-striped is-fullwidth is-bordered is-hoverable recent-referrers-table">
+                <table class="table is-striped is-fullwidth is-bordered is-hoverable">
                     <thead>
                         <tr>
                             <th>Referrer</th>
@@ -637,7 +741,8 @@ try {
                 maxBounds: [[-90, -180], [90, 180]],
                 minZoom: 1.4,
                 maxZoom: 18,
-                maxBoundsViscosity: 1.0
+                maxBoundsViscosity: 1.0,
+                scrollWheelZoom: false,
             }).setView([20, 0], 1.4);
             
             // Add tile layer (OpenStreetMap) with noWrap option to prevent multiple worlds
