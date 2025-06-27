@@ -1,16 +1,11 @@
 # Primary
+- Start a new db file periodically (when it reaches a certain size)
 
-- Merge the newly downloaded data with the local existing data
+- Track clicked links: internal & external (needs javascript)
 
-- Start a new db file periodically, once it reaches a certain size
+- Track data entered to input/search boxes (needs javascript)
 
-- Track clicked links (internal & external)
-    - needs javascript
-
-- Track data entered to input/search boxes 
-
-
-- Show Visit charts, percent gain: week-over-week, month-over-month
+- Filtering bots
 
 
 # Secondary
@@ -35,11 +30,12 @@ Heatmaps are a great way to visualize how visitors interact with websites, apps,
 
 
 # MISC
-- Mint: https://web.archive.org/web/20130327053746/http://haveamint.com/
+- Server-side analytics solutions:
+    - https://matomo.org/
+    - Server log analyzers: AWStats, Webalizer
+    - Mint: https://web.archive.org/web/20130327053746/http://haveamint.com/
 
-- Alternatives to Maxmind GeoLite: https://www.perplexity.ai/search/alternatives-to-maxmind-s-geol-JEh8rKrLRUafi0S4agotJg
-
-- Other web analytics libs:
+- Client-side analytics solutions:
     - https://usefathom.com
     - https://www.simpleanalytics.com/
     - https://plausible.io

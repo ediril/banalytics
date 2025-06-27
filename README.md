@@ -1,4 +1,4 @@
-The simplest, most banal yet sufficient server-side alternative to Google Analytics
+The simplest, most banal yet sufficient server-side analytics solution
 
 # Screenshot
 ![Screenshot](screenshot.jpg)
