@@ -1,4 +1,4 @@
-The simplest, most banal yet sufficient server-side analytics solution
+A simple yet sufficient server-side analytics library
 
 # Screenshot
 ![Screenshot](screenshot.jpg)
