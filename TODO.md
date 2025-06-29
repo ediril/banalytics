@@ -1,12 +1,9 @@
 # Primary
-- Start a new db file periodically (when it reaches a certain size)
+- Start a new db file when the current one reaches a certain size (rename existing, create new)
 
 - Track clicked links: internal & external (needs javascript)
 
 - Track data entered to input/search boxes (needs javascript)
-
-- Filtering bots
-
 
 # Secondary
 - Add support for ipv6

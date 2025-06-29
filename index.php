@@ -131,6 +131,34 @@ try {
         }
     }
     
+    // Function to detect if a user agent is a bot
+    function isBot($userAgent) {
+        if (empty($userAgent)) return false;
+        
+        $userAgent = strtolower($userAgent);
+        
+        // Common bot patterns
+        $botPatterns = [
+            'bot', 'crawler', 'spider', 'scraper',
+            'googlebot', 'bingbot', 'yandexbot', 'baiduspider',
+            'facebookexternalhit', 'twitterbot', 'linkedinbot', 'meta-externalagent',
+            'ahrefsbot', 'semrushbot', 'mj12bot', 'majesticbot', 'dotbot',
+            'uptimerobot', 'pingdom', 'statuscake', 'monitor',
+            'curl', 'wget', 'python-requests', 'got',
+            'shields.io', 'marginalia', 'archive.org',
+            'slurp', 'duckduckbot', 'applebot', 'teoma',
+            '360spider', 'sogou', 'exabot', 'facebot'
+        ];
+        
+        foreach ($botPatterns as $pattern) {
+            if (strpos($userAgent, $pattern) !== false) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
     // Check if there are IPs that need geocoding
     $ipsNeedingGeocodingCount = $db->querySingle("
         SELECT COUNT(DISTINCT ip) 
@@ -163,68 +191,158 @@ try {
             $mapData[] = $row;
         }
 
-        // Get total visitor stats with time filter
-        $totalVisits = $db->querySingle("SELECT COUNT(*) FROM analytics WHERE status BETWEEN 200 AND 299 $whereTimeClause");
-        $uniqueVisitors = $db->querySingle("SELECT COUNT(DISTINCT ip) FROM analytics WHERE status BETWEEN 200 AND 299 $whereTimeClause");
-        $countriesCount = $db->querySingle("SELECT COUNT(DISTINCT country) FROM analytics WHERE country IS NOT NULL AND status BETWEEN 200 AND 299 $whereTimeClause");
+        // Get all records to separate bots from humans
+        $allRecords = [];
+        $result = $db->query("SELECT ua, ip, country FROM analytics WHERE status BETWEEN 200 AND 299 $whereTimeClause");
+        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            $allRecords[] = $row;
+        }
+        
+        // Separate human and bot traffic
+        $humanRecords = [];
+        $botRecords = [];
+        foreach ($allRecords as $record) {
+            if (isBot($record['ua'])) {
+                $botRecords[] = $record;
+            } else {
+                $humanRecords[] = $record;
+            }
+        }
+        
+        // Calculate human visitor stats
+        $totalVisits = count($humanRecords);
+        $uniqueVisitors = count(array_unique(array_column($humanRecords, 'ip')));
+        $countriesCount = count(array_unique(array_filter(array_column($humanRecords, 'country'))));
+        
+        // Calculate bot visitor stats
+        $totalBotVisits = count($botRecords);
+        $uniqueBotVisitors = count(array_unique(array_column($botRecords, 'ip')));
+        $botCountriesCount = count(array_unique(array_filter(array_column($botRecords, 'country'))));
 
         // Format data for JavaScript
         $mapDataJSON = json_encode($mapData);
 
-        // Get top countries with time filter
+        // Get top countries with time filter - separate human and bot
         $topCountries = [];
+        $topBotCountries = [];
         $result = $db->query("
-            SELECT country, COUNT(*) as count 
+            SELECT country, ua, COUNT(*) as count 
             FROM analytics 
             WHERE country IS NOT NULL AND status BETWEEN 200 AND 299 $whereTimeClause
-            GROUP BY country 
-            ORDER BY count DESC 
-            LIMIT 10
+            GROUP BY country, ua
+            ORDER BY count DESC
         ");
 
+        $countryData = [];
+        $botCountryData = [];
         while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-            $topCountries[] = $row;
+            $country = $row['country'];
+            $count = $row['count'];
+            
+            if (isBot($row['ua'])) {
+                $botCountryData[$country] = ($botCountryData[$country] ?? 0) + $count;
+            } else {
+                $countryData[$country] = ($countryData[$country] ?? 0) + $count;
+            }
         }
-        // Get top visited pages with time filter
+        
+        // Sort and limit human countries
+        arsort($countryData);
+        foreach (array_slice($countryData, 0, 10, true) as $country => $count) {
+            $topCountries[] = ['country' => $country, 'count' => $count];
+        }
+        
+        // Sort and limit bot countries
+        arsort($botCountryData);
+        foreach (array_slice($botCountryData, 0, 10, true) as $country => $count) {
+            $topBotCountries[] = ['country' => $country, 'count' => $count];
+        }
+        // Get top visited pages with time filter - filter out bots
         $topPages = [];
         $result = $db->query("
-            SELECT REPLACE(url, '://www.', '://') AS url, COUNT(*) AS total_visits, COUNT(DISTINCT ip) AS unique_visits
+            SELECT REPLACE(url, '://www.', '://') AS url, ua, ip
             FROM analytics 
             WHERE url IS NOT NULL AND status BETWEEN 200 AND 299 AND REPLACE(url, '://www.', '://') NOT LIKE '%/' $whereTimeClause
-            GROUP BY REPLACE(url, '://www.', '://')
-            ORDER BY total_visits DESC 
-            LIMIT 10
         ");
 
+        $pageData = [];
         while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-            $topPages[] = $row;
+            if (!isBot($row['ua'])) { // Filter out bots
+                $url = $row['url'];
+                $ip = $row['ip'];
+                
+                if (!isset($pageData[$url])) {
+                    $pageData[$url] = ['total_visits' => 0, 'unique_ips' => []];
+                }
+                $pageData[$url]['total_visits']++;
+                $pageData[$url]['unique_ips'][$ip] = true;
+            }
         }
+        
+        // Calculate unique visits and sort
+        foreach ($pageData as $url => $data) {
+            $topPages[] = [
+                'url' => $url,
+                'total_visits' => $data['total_visits'],
+                'unique_visits' => count($data['unique_ips'])
+            ];
+        }
+        
+        // Sort by total visits and limit
+        usort($topPages, function($a, $b) { return $b['total_visits'] - $a['total_visits']; });
+        $topPages = array_slice($topPages, 0, 10);
 
-        // Build data for charts -----------------------------------
+        // Build data for charts ----------------------------------- (filter out bots)
         // DAILY (within selected time window)
         $dailyVisits = [];
-        $result = $db->query("SELECT strftime('%Y-%m-%d', dt, 'unixepoch') AS period, COUNT(*) AS cnt FROM analytics WHERE status BETWEEN 200 AND 299 $whereTimeClause GROUP BY period ORDER BY period ASC");
-        while($row=$result->fetchArray(SQLITE3_ASSOC)){$dailyVisits[]=$row;}
+        $result = $db->query("SELECT strftime('%Y-%m-%d', dt, 'unixepoch') AS period, ua FROM analytics WHERE status BETWEEN 200 AND 299 $whereTimeClause ORDER BY period ASC");
+        $dailyData = [];
+        while($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            if (!isBot($row['ua'])) {
+                $period = $row['period'];
+                $dailyData[$period] = ($dailyData[$period] ?? 0) + 1;
+            }
+        }
+        foreach ($dailyData as $period => $cnt) {
+            $dailyVisits[] = ['period' => $period, 'cnt' => $cnt];
+        }
 
         // WEEKLY (ISO week) within selected time window - get the Monday of each week
         $weeklyVisits = [];
         $result = $db->query("
             SELECT 
                 strftime('%Y-%m-%d', dt, 'unixepoch', 'weekday 0', '-6 days') AS period,
-                COUNT(*) AS cnt 
+                ua
             FROM analytics 
             WHERE status BETWEEN 200 AND 299 $whereTimeClause 
-            GROUP BY strftime('%Y-%W', dt, 'unixepoch') 
             ORDER BY period ASC
         ");
-        while($row=$result->fetchArray(SQLITE3_ASSOC)){$weeklyVisits[]=$row;}
+        $weeklyData = [];
+        while($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            if (!isBot($row['ua'])) {
+                $period = $row['period'];
+                $weeklyData[$period] = ($weeklyData[$period] ?? 0) + 1;
+            }
+        }
+        foreach ($weeklyData as $period => $cnt) {
+            $weeklyVisits[] = ['period' => $period, 'cnt' => $cnt];
+        }
 
         // MONTHLY within selected time window
         $monthlyVisits = [];
-        $result = $db->query("SELECT strftime('%Y-%m', dt, 'unixepoch') AS period, COUNT(*) AS cnt FROM analytics WHERE status BETWEEN 200 AND 299 $whereTimeClause GROUP BY period ORDER BY period ASC");
-        while($row=$result->fetchArray(SQLITE3_ASSOC)){$monthlyVisits[]=$row;}
+        $result = $db->query("SELECT strftime('%Y-%m', dt, 'unixepoch') AS period, ua FROM analytics WHERE status BETWEEN 200 AND 299 $whereTimeClause ORDER BY period ASC");
+        $monthlyData = [];
+        while($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            if (!isBot($row['ua'])) {
+                $period = $row['period'];
+                $monthlyData[$period] = ($monthlyData[$period] ?? 0) + 1;
+            }
+        }
+        foreach ($monthlyData as $period => $cnt) {
+            $monthlyVisits[] = ['period' => $period, 'cnt' => $cnt];
+        }
 
-        // Get top referrers with time filter (exclude empty strings)
+        // Get top referrers with time filter (exclude empty strings) - filter out bots
         $httpsPattern = "https://{$domain}/%";
         $httpPattern = "http://{$domain}/%";
         $result = $db->query("
@@ -235,43 +353,72 @@ try {
                     THEN '[Self Referral]'
                     ELSE REPLACE(referer, '://www.', '://')
                 END AS referer,
-                COUNT(*) AS count
+                ua
             FROM analytics
             WHERE referer != '' AND status BETWEEN 200 AND 299 $whereTimeClause
-            GROUP BY 
-                CASE 
-                    WHEN REPLACE(referer, '://www.', '://') LIKE '{$httpsPattern}' 
-                        OR REPLACE(referer, '://www.', '://') LIKE '{$httpPattern}' 
-                    THEN '[Self Referral]'
-                    ELSE REPLACE(referer, '://www.', '://')
-                END
-            ORDER BY count DESC
-            LIMIT 10
         ");
 
+        $refererData = [];
         while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-            $topReferers[] = $row;
+            if (!isBot($row['ua'])) { // Filter out bots
+                $referer = $row['referer'];
+                $refererData[$referer] = ($refererData[$referer] ?? 0) + 1;
+            }
+        }
+        
+        // Sort and limit referrers
+        arsort($refererData);
+        foreach (array_slice($refererData, 0, 10, true) as $referer => $count) {
+            $topReferers[] = ['referer' => $referer, 'count' => $count];
         }
 
-        // Get recently visited pages with time filter
+        // Get recently visited pages with time filter - filter out bots
         $recentPages = [];
         $result = $db->query("
-            SELECT REPLACE(url, '://www.', '://') AS url, 
-                   MAX(dt) AS last_visit,
-                   COUNT(*) AS total_visits, 
-                   COUNT(DISTINCT ip) AS unique_visits
+            SELECT REPLACE(url, '://www.', '://') AS url, dt, ua, ip
             FROM analytics 
             WHERE url IS NOT NULL AND status BETWEEN 200 AND 299 AND REPLACE(url, '://www.', '://') NOT LIKE '%/' $whereTimeClause
-            GROUP BY REPLACE(url, '://www.', '://')
-            ORDER BY last_visit DESC 
-            LIMIT 10
+            ORDER BY dt DESC
         ");
 
+        $recentPageData = [];
         while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-            $recentPages[] = $row;
+            if (!isBot($row['ua'])) { // Filter out bots
+                $url = $row['url'];
+                $dt = $row['dt'];
+                $ip = $row['ip'];
+                
+                if (!isset($recentPageData[$url])) {
+                    $recentPageData[$url] = [
+                        'last_visit' => $dt,
+                        'total_visits' => 0,
+                        'unique_ips' => []
+                    ];
+                }
+                
+                $recentPageData[$url]['total_visits']++;
+                $recentPageData[$url]['unique_ips'][$ip] = true;
+                if ($dt > $recentPageData[$url]['last_visit']) {
+                    $recentPageData[$url]['last_visit'] = $dt;
+                }
+            }
         }
+        
+        // Convert to array and calculate unique visits
+        foreach ($recentPageData as $url => $data) {
+            $recentPages[] = [
+                'url' => $url,
+                'last_visit' => $data['last_visit'],
+                'total_visits' => $data['total_visits'],
+                'unique_visits' => count($data['unique_ips'])
+            ];
+        }
+        
+        // Sort by last visit and limit
+        usort($recentPages, function($a, $b) { return $b['last_visit'] - $a['last_visit']; });
+        $recentPages = array_slice($recentPages, 0, 10);
 
-        // Get recent referrers with time filter (exclude empty strings)
+        // Get recent referrers with time filter (exclude empty strings) - filter out bots
         $recentReferers = [];
         $result = $db->query("
             SELECT 
@@ -281,24 +428,39 @@ try {
                     THEN '[Self Referral]'
                     ELSE REPLACE(referer, '://www.', '://')
                 END AS referer,
-                MAX(dt) AS last_referral,
-                COUNT(*) AS count
+                ua,
+                dt
             FROM analytics
             WHERE referer != '' AND status BETWEEN 200 AND 299 $whereTimeClause
-            GROUP BY 
-                CASE 
-                    WHEN REPLACE(referer, '://www.', '://') LIKE '{$httpsPattern}' 
-                        OR REPLACE(referer, '://www.', '://') LIKE '{$httpPattern}' 
-                    THEN '[Self Referral]'
-                    ELSE REPLACE(referer, '://www.', '://')
-                END
-            ORDER BY last_referral DESC
-            LIMIT 10
+            ORDER BY dt DESC
         ");
 
+        $recentRefererData = [];
         while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-            $recentReferers[] = $row;
+            if (!isBot($row['ua'])) { // Filter out bots
+                $referer = $row['referer'];
+                $dt = $row['dt'];
+                
+                if (!isset($recentRefererData[$referer])) {
+                    $recentRefererData[$referer] = [
+                        'referer' => $referer,
+                        'last_referral' => $dt,
+                        'count' => 0
+                    ];
+                }
+                
+                $recentRefererData[$referer]['count']++;
+                if ($dt > $recentRefererData[$referer]['last_referral']) {
+                    $recentRefererData[$referer]['last_referral'] = $dt;
+                }
+            }
         }
+        
+        // Sort by last referral and limit
+        uasort($recentRefererData, function($a, $b) {
+            return $b['last_referral'] - $a['last_referral'];
+        });
+        $recentReferers = array_slice($recentRefererData, 0, 10);
 
         // Keep the most recent period in all datasets. It may be incomplete, and
         // will be rendered with a striped fill on the chart to indicate that it
@@ -587,22 +749,42 @@ try {
         </div>
 
         <div class="columns is-variable is-3 has-text-centered">
-            <div class="column is-one-third">
-                <div class="box stats-box mb-0 has-background-grey-lighter has-text-weight-bold is-flex is-flex-direction-column is-justify-content-center is-align-items-center">
-                    <h3>Total Visits</h3>
-                    <p><?php echo number_format($totalVisits); ?></p>
+            <div class="column is-three-fifths">
+                <div class="columns is-variable is-2">
+                    <div class="column">
+                        <div class="box stats-box mb-0 has-background-grey-lighter has-text-weight-bold is-flex is-flex-direction-column is-justify-content-center is-align-items-center">
+                            <h3>👥 Total Visits</h3>
+                            <p><?php echo number_format($totalVisits); ?></p>
+                        </div>
+                    </div>
+                    <div class="column">
+                        <div class="box stats-box mb-0 has-background-grey-lighter has-text-weight-bold is-flex is-flex-direction-column is-justify-content-center is-align-items-center">
+                            <h3>👤 Unique Visits</h3>
+                            <p><?php echo number_format($uniqueVisitors); ?></p>
+                        </div>
+                    </div>
+                    <div class="column">
+                        <div class="box stats-box mb-0 has-background-grey-lighter has-text-weight-bold is-flex is-flex-direction-column is-justify-content-center is-align-items-center">
+                            <h3>🌍 Countries</h3>
+                            <p><?php echo number_format($countriesCount); ?></p>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="column is-one-third">
-                <div class="box stats-box mb-0 has-background-grey-lighter has-text-weight-bold is-flex is-flex-direction-column is-justify-content-center is-align-items-center">
-                    <h3>Unique Visitors</h3>
-                    <p><?php echo number_format($uniqueVisitors); ?></p>
-                </div>
-            </div>
-            <div class="column is-one-third">
-                <div class="box stats-box mb-0 has-background-grey-lighter has-text-weight-bold is-flex is-flex-direction-column is-justify-content-center is-align-items-center">
-                    <h3>Countries</h3>
-                    <p><?php echo number_format($countriesCount); ?></p>
+            <div class="column is-two-fifths">
+                <div class="columns is-variable is-2">
+                    <div class="column">
+                        <div class="box stats-box mb-0 has-background-grey-lighter has-text-weight-bold is-flex is-flex-direction-column is-justify-content-center is-align-items-center">
+                            <h3>🤖 Bot Visits</h3>
+                            <p><?php echo number_format($totalBotVisits); ?></p>
+                        </div>
+                    </div>
+                    <div class="column">
+                        <div class="box stats-box mb-0 has-background-grey-lighter has-text-weight-bold is-flex is-flex-direction-column is-justify-content-center is-align-items-center">
+                            <h3>🤖 Bot Countries</h3>
+                            <p><?php echo number_format($botCountriesCount); ?></p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
