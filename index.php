@@ -895,6 +895,25 @@ try {
                     </tbody>
                 </table>
             </div>
+            <div class="column">
+                <h2>Bot Countries</h2>
+                <table class="table is-striped is-fullwidth is-bordered is-hoverable">
+                    <thead>
+                        <tr>
+                            <th>Country</th>
+                            <th class="has-text-right">Visits</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($topBotCountries as $country): ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars($country['country']); ?></td>
+                            <td class="has-text-right"><?php echo number_format($country['count']); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <?php if ($ipsNeedingGeocodingCount > 0): ?>
