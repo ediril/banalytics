@@ -12,4 +12,5 @@ GeoLite2**/
 *.db-*
 *.bak
 *.yaml
+___*
 
