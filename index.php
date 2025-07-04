@@ -144,7 +144,7 @@ try {
             'facebookexternalhit', 'twitterbot', 'linkedinbot', 'meta-externalagent',
             'ahrefsbot', 'semrushbot', 'mj12bot', 'majesticbot', 'dotbot',
             'uptimerobot', 'pingdom', 'statuscake', 'monitor',
-            'curl', 'wget', 'python-requests', 'got',
+            'curl', 'wget', 'python-requests', 'github',
             'shields.io', 'marginalia', 'archive.org',
             'slurp', 'duckduckbot', 'applebot', 'teoma',
             '360spider', 'sogou', 'exabot', 'facebot'
