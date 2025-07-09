@@ -1,9 +1,16 @@
 # Primary
+
+- Be able to expand any row in "Top Visited Pages" and get a list of IP addresses
+
+- Be able to filter out IPs on the dashboard
+
 - Start a new db file when the current one reaches a certain size (rename existing, create new)
 
 - Track clicked links: internal & external (needs javascript)
 
 - Track data entered to input/search boxes (needs javascript)
+
+- IP filtering
 
 # Secondary
 - Add support for ipv6
