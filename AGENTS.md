@@ -1,6 +1,6 @@
 # Technology Stack
 - **Backend**: PHP 8.3
-- **Frontend**: JavaSciprt
+- **Frontend**: JavaScript
 - **CSS Framework**: Bulma 1.0.4
 - **Database**: sqlite
 
