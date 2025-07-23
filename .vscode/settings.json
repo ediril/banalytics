@@ -1,7 +1,7 @@
 {
     "php.suggest.basic": false,
     "php.validate.enable": true,
-    "php.validate.executablePath": "/usr/bin/php",
+    "php.validate.executablePath": "/opt/homebrew/bin/php",
     "intelephense.stubs": [
         "apache",
         "bcmath",
