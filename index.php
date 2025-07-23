@@ -182,7 +182,8 @@ try {
         $result = $db->query("
             SELECT country, city, latitude, longitude, COUNT(*) as visit_count 
             FROM analytics 
-            WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND status BETWEEN 200 AND 299 $whereTimeClause
+            WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND status BETWEEN 200 AND 299 
+            AND url NOT LIKE 'http://localhost%' AND referer NOT LIKE 'http://localhost%' $whereTimeClause
             GROUP BY country, city, latitude, longitude
             ORDER BY visit_count DESC
         ");
@@ -193,7 +194,7 @@ try {
 
         // Get all records to separate bots from humans
         $allRecords = [];
-        $result = $db->query("SELECT ua, ip, country FROM analytics WHERE status BETWEEN 200 AND 299 $whereTimeClause");
+        $result = $db->query("SELECT ua, ip, country FROM analytics WHERE status BETWEEN 200 AND 299 AND url NOT LIKE 'http://localhost%' AND referer NOT LIKE 'http://localhost%' $whereTimeClause");
         while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
             $allRecords[] = $row;
         }
@@ -228,7 +229,8 @@ try {
         $result = $db->query("
             SELECT country, ua, COUNT(*) as count 
             FROM analytics 
-            WHERE country IS NOT NULL AND status BETWEEN 200 AND 299 $whereTimeClause
+            WHERE country IS NOT NULL AND status BETWEEN 200 AND 299 
+            AND url NOT LIKE 'http://localhost%' AND referer NOT LIKE 'http://localhost%' $whereTimeClause
             GROUP BY country, ua
             ORDER BY count DESC
         ");
@@ -262,7 +264,8 @@ try {
         $result = $db->query("
             SELECT REPLACE(url, '://www.', '://') AS url, ua, ip
             FROM analytics 
-            WHERE url IS NOT NULL AND status BETWEEN 200 AND 299 AND REPLACE(url, '://www.', '://') NOT LIKE '%/' $whereTimeClause
+            WHERE url IS NOT NULL AND status BETWEEN 200 AND 299 AND REPLACE(url, '://www.', '://') NOT LIKE '%/' 
+            AND url NOT LIKE 'http://localhost%' AND referer NOT LIKE 'http://localhost%' $whereTimeClause
         ");
 
         $pageData = [];
@@ -295,7 +298,7 @@ try {
         // Build data for charts ----------------------------------- (filter out bots)
         // DAILY (within selected time window)
         $dailyVisits = [];
-        $result = $db->query("SELECT strftime('%Y-%m-%d', dt, 'unixepoch') AS period, ua FROM analytics WHERE status BETWEEN 200 AND 299 $whereTimeClause ORDER BY period ASC");
+        $result = $db->query("SELECT strftime('%Y-%m-%d', dt, 'unixepoch') AS period, ua FROM analytics WHERE status BETWEEN 200 AND 299 AND url NOT LIKE 'http://localhost%' AND referer NOT LIKE 'http://localhost%' $whereTimeClause ORDER BY period ASC");
         $dailyData = [];
         while($row = $result->fetchArray(SQLITE3_ASSOC)) {
             if (!isBot($row['ua'])) {
@@ -314,7 +317,7 @@ try {
                 strftime('%Y-%m-%d', dt, 'unixepoch', 'weekday 0', '-6 days') AS period,
                 ua
             FROM analytics 
-            WHERE status BETWEEN 200 AND 299 $whereTimeClause 
+            WHERE status BETWEEN 200 AND 299 AND url NOT LIKE 'http://localhost%' AND referer NOT LIKE 'http://localhost%' $whereTimeClause 
             ORDER BY period ASC
         ");
         $weeklyData = [];
@@ -330,7 +333,7 @@ try {
 
         // MONTHLY within selected time window
         $monthlyVisits = [];
-        $result = $db->query("SELECT strftime('%Y-%m', dt, 'unixepoch') AS period, ua FROM analytics WHERE status BETWEEN 200 AND 299 $whereTimeClause ORDER BY period ASC");
+        $result = $db->query("SELECT strftime('%Y-%m', dt, 'unixepoch') AS period, ua FROM analytics WHERE status BETWEEN 200 AND 299 AND url NOT LIKE 'http://localhost%' AND referer NOT LIKE 'http://localhost%' $whereTimeClause ORDER BY period ASC");
         $monthlyData = [];
         while($row = $result->fetchArray(SQLITE3_ASSOC)) {
             if (!isBot($row['ua'])) {
@@ -355,7 +358,8 @@ try {
                 END AS referer,
                 ua
             FROM analytics
-            WHERE referer != '' AND status BETWEEN 200 AND 299 $whereTimeClause
+            WHERE referer != '' AND referer NOT LIKE 'http://localhost%' AND status BETWEEN 200 AND 299 
+            AND url NOT LIKE 'http://localhost%' $whereTimeClause
         ");
 
         $refererData = [];
@@ -377,7 +381,8 @@ try {
         $result = $db->query("
             SELECT REPLACE(url, '://www.', '://') AS url, dt, ua, ip
             FROM analytics 
-            WHERE url IS NOT NULL AND status BETWEEN 200 AND 299 AND REPLACE(url, '://www.', '://') NOT LIKE '%/' $whereTimeClause
+            WHERE url IS NOT NULL AND status BETWEEN 200 AND 299 AND REPLACE(url, '://www.', '://') NOT LIKE '%/' 
+            AND url NOT LIKE 'http://localhost%' AND referer NOT LIKE 'http://localhost%' $whereTimeClause
             ORDER BY dt DESC
         ");
 
@@ -431,7 +436,8 @@ try {
                 ua,
                 dt
             FROM analytics
-            WHERE referer != '' AND status BETWEEN 200 AND 299 $whereTimeClause
+            WHERE referer != '' AND referer NOT LIKE 'http://localhost%' AND status BETWEEN 200 AND 299 
+            AND url NOT LIKE 'http://localhost%' $whereTimeClause
             ORDER BY dt DESC
         ");
 
